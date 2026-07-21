@@ -43,6 +43,7 @@ export function AiKnowledgeCard({
   const [reindexing, setReindexing] = useState(false);
   const loadedAccountIdRef = useRef<string | null>(null);
   const t = useTranslations('Settings.aiKnowledge');
+  const tx = useTranslations('XSettingsAiKnowledge');
 
   const fetchDocs = useCallback(async () => {
     setLoading(true);
@@ -199,7 +200,7 @@ export function AiKnowledgeCard({
                           size="sm"
                           className="h-8 w-8 p-0"
                           onClick={() => void openEdit(doc.id)}
-                          title="Edit"
+                          title={tx('edit')}
                         >
                           <Pencil className="h-4 w-4" />
                         </Button>
@@ -208,7 +209,7 @@ export function AiKnowledgeCard({
                           size="sm"
                           className="h-8 w-8 p-0 text-destructive hover:text-destructive"
                           onClick={() => void remove(doc.id)}
-                          title="Delete"
+                          title={tx('delete')}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>

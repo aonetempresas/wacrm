@@ -23,6 +23,7 @@ import { SettingsPanelHead } from "./settings-panel-head";
 export function AppearancePanel() {
   const { theme, setTheme, mode, setMode } = useTheme();
   const t = useTranslations("Settings.appearance");
+  const tx = useTranslations("XSettingsAppearancePanel");
 
   return (
     <section className="max-w-3xl animate-in fade-in-50 duration-200">
@@ -39,7 +40,7 @@ export function AppearancePanel() {
 
         <div
           role="radiogroup"
-          aria-label="Color mode"
+          aria-label={tx("colorModeAria")}
           className="grid max-w-md grid-cols-2 gap-3"
         >
           {MODES.map((m) => (
@@ -138,6 +139,7 @@ function ThemeCard({
   onPick: () => void;
 }) {
   const t = useTranslations("Settings.appearance");
+  const tx = useTranslations("XSettingsAppearancePanel");
   return (
     <button
       type="button"
@@ -182,7 +184,7 @@ function ThemeCard({
         <span className="w-3 bg-muted" />
         <span className="w-3 bg-card" />
       </div>
-      <span className="sr-only">Theme id: {id}</span>
+      <span className="sr-only">{tx("themeId", { id })}</span>
     </button>
   );
 }
