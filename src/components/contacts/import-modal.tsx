@@ -127,6 +127,7 @@ export function ImportModal({
   onImported,
 }: ImportModalProps) {
   const t = useTranslations('Contacts.importModal');
+  const tx = useTranslations('XContactsImportModal');
   const supabase = createClient();
   const { accountId, canEditSettings } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -214,9 +215,9 @@ export function ImportModal({
         data: { session },
       } = await supabase.auth.getSession();
       const user = session?.user;
-      if (!user) throw new Error('Not authenticated');
+      if (!user) throw new Error(tx('notAuthenticated'));
       if (!accountId)
-        throw new Error('Your profile is not linked to an account.');
+        throw new Error(tx('profileNotLinked'));
 
       let imported = 0;
       let skipped = 0;

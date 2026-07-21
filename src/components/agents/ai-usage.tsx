@@ -23,6 +23,7 @@ import { Skeleton } from '@/components/dashboard/skeleton';
 import { BarChart } from '@/components/tremor/bar-chart';
 import { formatCompactNumber } from '@/lib/currency';
 import { format, parseISO } from 'date-fns';
+import { useTranslations } from 'next-intl';
 
 interface UsageResponse {
   window_days: number;
@@ -55,6 +56,7 @@ const WINDOWS = [7, 30, 90] as const;
  */
 export function AiUsageCard() {
   const { accountId, accountRole, profileLoading } = useAuth();
+  const tx = useTranslations('XAgentsAiUsage');
   const canView = accountRole ? canEditSettings(accountRole) : false;
 
   const [days, setDays] = useState<number>(30);
@@ -70,13 +72,13 @@ export function AiUsageCard() {
       });
       const json = await res.json().catch(() => null);
       if (!res.ok) {
-        toast.error(json?.error ?? 'Failed to load usage');
+        toast.error(json?.error ?? tx('failedToLoad'));
         setData(null);
         return;
       }
       setData(json as UsageResponse);
     } catch {
-      toast.error('Failed to load usage');
+      toast.error(tx('failedToLoad'));
       setData(null);
     } finally {
       setLoading(false);
@@ -105,11 +107,10 @@ export function AiUsageCard() {
         <div className="flex items-start justify-between gap-4">
           <div>
             <CardTitle className="flex items-center gap-2 text-base">
-              <BarChart3 className="h-4 w-4 text-primary" /> Token usage
+              <BarChart3 className="h-4 w-4 text-primary" /> {tx('tokenUsage')}
             </CardTitle>
             <CardDescription>
-              Tokens spent on your provider key by drafts and the auto-reply
-              bot. Counts only — no message content is stored here.
+              {tx('description')}
             </CardDescription>
           </div>
           <Select
@@ -122,7 +123,7 @@ export function AiUsageCard() {
             <SelectContent>
               {WINDOWS.map((w) => (
                 <SelectItem key={w} value={String(w)}>
-                  Last {w} days
+                  {tx('lastNDays', { w })}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -135,23 +136,23 @@ export function AiUsageCard() {
         ) : !hasSpend ? (
           <div className="flex flex-col items-center justify-center gap-2 py-10 text-center text-sm text-muted-foreground">
             <BarChart3 className="h-8 w-8 opacity-40" />
-            <p>No AI usage in the last {data.window_days} days yet.</p>
+            <p>{tx('noUsage', { days: data.window_days })}</p>
             <p className="text-xs">
-              This fills in as the assistant drafts and auto-replies.
+              {tx('fillsIn')}
             </p>
           </div>
         ) : (
           <>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <Stat label="Total tokens" value={formatCompactNumber(data.totals.total_tokens)} />
-              <Stat label="LLM calls" value={String(data.totals.calls)} />
+              <Stat label={tx('totalTokens')} value={formatCompactNumber(data.totals.total_tokens)} />
+              <Stat label={tx('llmCalls')} value={String(data.totals.calls)} />
               <Stat
-                label="Auto-reply"
+                label={tx('autoReply')}
                 value={formatCompactNumber(data.by_mode.auto_reply.tokens)}
                 icon={Bot}
               />
               <Stat
-                label="Drafts"
+                label={tx('drafts')}
                 value={formatCompactNumber(data.by_mode.draft.tokens)}
                 icon={PencilLine}
               />
@@ -159,7 +160,7 @@ export function AiUsageCard() {
 
             <div>
               <p className="mb-2 text-xs font-medium text-muted-foreground">
-                Tokens per day
+                {tx('tokensPerDay')}
               </p>
               <BarChart
                 data={chartData}
@@ -176,7 +177,7 @@ export function AiUsageCard() {
             {data.by_model.length > 0 && (
               <div>
                 <p className="mb-2 text-xs font-medium text-muted-foreground">
-                  By model
+                  {tx('byModel')}
                 </p>
                 <ul className="divide-y divide-border rounded-md border border-border">
                   {data.by_model.map((m) => (
@@ -191,8 +192,7 @@ export function AiUsageCard() {
                         </span>
                       </span>
                       <span className="flex-shrink-0 tabular-nums text-muted-foreground">
-                        {formatCompactNumber(m.tokens)} tok · {m.calls}{' '}
-                        {m.calls === 1 ? 'call' : 'calls'}
+                        {formatCompactNumber(m.tokens)} tok · {tx('callsCount', { count: m.calls })}
                       </span>
                     </li>
                   ))}
@@ -202,8 +202,7 @@ export function AiUsageCard() {
 
             {data.truncated && (
               <p className="text-xs text-muted-foreground">
-                Showing a partial window — usage is high enough that only the
-                most recent records are summarized here.
+                {tx('truncated')}
               </p>
             )}
           </>

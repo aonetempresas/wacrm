@@ -75,6 +75,7 @@ export function InviteMemberDialog({
   onCreated,
 }: InviteMemberDialogProps) {
   const t = useTranslations('Settings.invite');
+  const tx = useTranslations('XSettingsInviteMemberDialog');
   const tRoles = useTranslations('Settings.roles');
   const { account } = useAuth();
   const [role, setRole] = useState<InviteRole>('agent');
@@ -117,7 +118,7 @@ export function InviteMemberDialog({
 
       if (!res.ok) {
         const payload = await res.json().catch(() => ({}));
-        toast.error(payload.error || 'Failed to create invitation');
+        toast.error(payload.error || tx('failedToCreateInvitation'));
         return;
       }
 
@@ -135,12 +136,12 @@ export function InviteMemberDialog({
         // string if `account` hasn't loaded yet (shouldn't happen
         // — the dialog requires admin+ which requires a loaded
         // profile — but stay safe).
-        accountName: account?.name ?? 'our wacrm account',
+        accountName: account?.name ?? tx('ourWacrmAccount'),
       });
       onCreated();
     } catch (err) {
       console.error('[InviteMemberDialog] create error:', err);
-      toast.error('Could not reach the server. Try again?');
+      toast.error(tx('couldNotReachServerTryAgain'));
     } finally {
       setSubmitting(false);
     }
@@ -164,7 +165,7 @@ export function InviteMemberDialog({
     // they're being invited to before clicking through. This matters
     // for users in multi-team contexts where "our wacrm account"
     // wouldn't be enough to disambiguate.
-    const accountName = result?.accountName ?? 'our wacrm account';
+    const accountName = result?.accountName ?? tx('ourWacrmAccount');
     const message = t('whatsappMessage', { accountName, expiresInDays: result?.expiresInDays ?? 0, url });
     return `https://wa.me/?text=${encodeURIComponent(message)}`;
   }

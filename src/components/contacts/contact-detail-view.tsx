@@ -56,6 +56,7 @@ export function ContactDetailView({
   onUpdated,
 }: ContactDetailViewProps) {
   const t = useTranslations('Contacts.detailView');
+  const tx = useTranslations('XContactsContactDetailView');
   const supabase = createClient();
   const { accountId, defaultCurrency } = useAuth();
 
@@ -359,8 +360,8 @@ export function ContactDetailView({
 
       toast.success(t('toastTemplateSent', { name: template.name }));
     } catch (err) {
-      const reason = err instanceof Error ? err.message : 'network error';
-      toast.error(`Failed to send template: ${reason}`);
+      const reason = err instanceof Error ? err.message : tx('networkError');
+      toast.error(tx('failedToSendTemplate', { reason }));
     } finally {
       setSendingTemplate(false);
     }

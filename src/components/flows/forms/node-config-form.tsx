@@ -239,6 +239,7 @@ function SendButtonsForm({
   showAdvanced: boolean;
   t: ReturnType<typeof useTranslations>;
 }) {
+  const tx = useTranslations("XFormsNodeConfigForm");
   const buttons = cfg.buttons ?? [];
   const updateButton = (
     idx: number,
@@ -254,7 +255,7 @@ function SendButtonsForm({
         ...buttons,
         {
           reply_id: `btn_${buttons.length + 1}`,
-          title: "Option",
+          title: tx("option"),
           next_node_key: "",
         },
       ],
@@ -379,6 +380,7 @@ function SendListForm({
   showAdvanced: boolean;
   t: ReturnType<typeof useTranslations>;
 }) {
+  const tx = useTranslations("XFormsNodeConfigForm");
   const sections = cfg.sections ?? [];
   const totalRows = sections.reduce((sum, s) => sum + s.rows.length, 0);
 
@@ -401,7 +403,7 @@ function SendListForm({
           rows: [
             {
               reply_id: `row_${totalRows + 1}`,
-              title: `Option ${totalRows + 1}`,
+              title: tx("optionN", { n: totalRows + 1 }),
               next_node_key: "",
             },
           ],
@@ -456,7 +458,7 @@ function SendListForm({
   return (
     <>
       <TextRow
-        label="Body text"
+        label={tx("bodyText")}
         value={cfg.text ?? ""}
         onChange={(v) => onUpdateConfig({ text: v })}
         rows={3}
@@ -498,7 +500,7 @@ function SendListForm({
                   size="sm"
                   onClick={() => removeSection(sIdx)}
                   className="shrink-0 text-red-400 hover:bg-red-500/10 hover:text-red-300"
-                  aria-label="Remove section"
+                  aria-label={tx("removeSection")}
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </Button>
@@ -616,6 +618,7 @@ function ConditionForm({
   onUpdateConfig: (patch: Record<string, unknown>) => void;
   t: ReturnType<typeof useTranslations>;
 }) {
+  const tx = useTranslations("XFormsNodeConfigForm");
   const tags = useUserTags();
 
   const subject = cfg.subject ?? "var";
@@ -657,7 +660,7 @@ function ConditionForm({
               onValueChange={(v) => onUpdateConfig({ subject_key: v })}
             >
               <SelectTrigger className="bg-muted">
-                <SelectValue placeholder="Pick a tag…" />
+                <SelectValue placeholder={tx("pickATag")} />
               </SelectTrigger>
               <SelectContent>
                 {tags.map((t) => (
@@ -676,10 +679,10 @@ function ConditionForm({
                 <SelectValue placeholder={t("pickField")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="name">name</SelectItem>
-                <SelectItem value="email">email</SelectItem>
-                <SelectItem value="phone">phone</SelectItem>
-                <SelectItem value="company">company</SelectItem>
+                <SelectItem value="name">{tx("fieldName")}</SelectItem>
+                <SelectItem value="email">{tx("fieldEmail")}</SelectItem>
+                <SelectItem value="phone">{tx("fieldPhone")}</SelectItem>
+                <SelectItem value="company">{tx("fieldCompany")}</SelectItem>
               </SelectContent>
             </Select>
           ) : (
@@ -775,6 +778,7 @@ function SetTagForm({
   onUpdateConfig: (patch: Record<string, unknown>) => void;
   t: ReturnType<typeof useTranslations>;
 }) {
+  const tx = useTranslations("XFormsNodeConfigForm");
   const tags = useUserTags();
 
   return (
@@ -805,7 +809,7 @@ function SetTagForm({
               onValueChange={(v) => onUpdateConfig({ tag_id: v })}
             >
               <SelectTrigger className="bg-muted">
-                <SelectValue placeholder="Pick a tag…" />
+                <SelectValue placeholder={tx("pickATag")} />
               </SelectTrigger>
               <SelectContent>
                 {tags.map((t) => (
@@ -900,6 +904,7 @@ function SendMediaForm({
   onUpdateConfig: (patch: Record<string, unknown>) => void;
   t: ReturnType<typeof useTranslations>;
 }) {
+  const tx = useTranslations("XFormsNodeConfigForm");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
 
@@ -913,7 +918,7 @@ function SendMediaForm({
     async (file: File) => {
       if (file.size > MEDIA_MAX_BYTES) {
         toast.error(
-          `File is ${(file.size / 1024 / 1024).toFixed(1)} MB — limit is 16 MB.`,
+          tx("fileTooLarge", { mb: (file.size / 1024 / 1024).toFixed(1) }),
         );
         return;
       }
@@ -928,9 +933,9 @@ function SendMediaForm({
           media_url: publicUrl,
           filename: file.name,
         });
-        toast.success("File uploaded.");
+        toast.success(tx("fileUploaded"));
       } catch (err) {
-        const msg = err instanceof Error ? err.message : "Upload failed.";
+        const msg = err instanceof Error ? err.message : tx("uploadFailed");
         toast.error(msg);
       } finally {
         setUploading(false);
