@@ -49,10 +49,10 @@ export interface TemplatePayload {
 }
 
 export function validateTemplateName(name: string): void {
-  if (!name) throw new Error('O nome do modelo é obrigatório.');
+  if (!name) throw new Error('Template name is required.');
   if (!TEMPLATE_LIMITS.nameRegex.test(name)) {
     throw new Error(
-      'O nome do modelo deve usar apenas letras minúsculas, dígitos e sublinhados (1-512 caracteres).',
+      'Template name must use only lowercase letters, digits, and underscores (1-512 chars).',
     );
   }
 }
@@ -79,7 +79,7 @@ function assertContiguous(indices: number[], where: string): void {
   for (let i = 0; i < indices.length; i++) {
     if (indices[i] !== i + 1) {
       throw new Error(
-        `As variáveis de ${where} devem ser contíguas começando em {{1}} — encontrado ${indices
+        `${where} variables must be contiguous starting at {{1}} — found ${indices
           .map((n) => `{{${n}}}`)
           .join(', ')}.`,
       );
@@ -88,14 +88,14 @@ function assertContiguous(indices: number[], where: string): void {
 }
 
 export function validateBody(bodyText: string): number[] {
-  if (!bodyText.trim()) throw new Error('O texto do corpo é obrigatório.');
+  if (!bodyText.trim()) throw new Error('Body text is required.');
   if (bodyText.length > TEMPLATE_LIMITS.bodyMaxLength) {
     throw new Error(
-      `O texto do corpo excede ${TEMPLATE_LIMITS.bodyMaxLength} caracteres (recebido ${bodyText.length}).`,
+      `Body text exceeds ${TEMPLATE_LIMITS.bodyMaxLength} chars (got ${bodyText.length}).`,
     );
   }
   const indices = extractVariableIndices(bodyText);
-  assertContiguous(indices, 'corpo');
+  assertContiguous(indices, 'Body');
   return indices;
 }
 
@@ -103,11 +103,11 @@ export function validateFooter(footerText: string | undefined): void {
   if (!footerText) return;
   if (footerText.length > TEMPLATE_LIMITS.footerMaxLength) {
     throw new Error(
-      `O texto do rodapé excede ${TEMPLATE_LIMITS.footerMaxLength} caracteres (recebido ${footerText.length}).`,
+      `Footer text exceeds ${TEMPLATE_LIMITS.footerMaxLength} chars (got ${footerText.length}).`,
     );
   }
   if (extractVariableIndices(footerText).length > 0) {
-    throw new Error('O texto do rodapé não pode conter variáveis {{N}} (regra da Meta).');
+    throw new Error('Footer text cannot contain {{N}} variables (Meta rule).');
   }
 }
 
@@ -127,21 +127,21 @@ export function validateHeader(
 
   if (header_type === 'text') {
     if (!header_content || !header_content.trim()) {
-      throw new Error('O cabeçalho de texto requer header_content.');
+      throw new Error('Text header requires header_content.');
     }
     if (header_content.length > TEMPLATE_LIMITS.headerTextMaxLength) {
       throw new Error(
-        `O texto do cabeçalho excede ${TEMPLATE_LIMITS.headerTextMaxLength} caracteres (recebido ${header_content.length}).`,
+        `Header text exceeds ${TEMPLATE_LIMITS.headerTextMaxLength} chars (got ${header_content.length}).`,
       );
     }
     const indices = extractVariableIndices(header_content);
     if (indices.length > 1) {
       throw new Error(
-        `O cabeçalho de texto suporta no máximo uma variável — encontrado ${indices.length} (regra da Meta).`,
+        `Text header supports at most one variable — found ${indices.length} (Meta rule).`,
       );
     }
     if (indices.length === 1 && indices[0] !== 1) {
-      throw new Error('A variável do cabeçalho de texto deve ser {{1}} (regra da Meta).');
+      throw new Error('Text header variable must be {{1}} (Meta rule).');
     }
     return { variableCount: indices.length };
   }
@@ -150,17 +150,17 @@ export function validateHeader(
   // Upload handle. Either one — Meta accepts both example forms.
   if (!header_media_url && !header_handle) {
     throw new Error(
-      `O cabeçalho ${header_type} requer uma URL pública de exemplo (header_media_url) ou um handle de Resumable Upload (header_handle).`,
+      `${header_type} header requires either a public sample URL (header_media_url) or a Resumable Upload handle (header_handle).`,
     );
   }
   if (header_media_url) {
     try {
       const u = new URL(header_media_url);
       if (u.protocol !== 'https:' && u.protocol !== 'http:') {
-        throw new Error('header_media_url deve usar o esquema http(s).');
+        throw new Error('header_media_url must use http(s) scheme.');
       }
     } catch {
-      throw new Error('header_media_url deve ser uma URL válida.');
+      throw new Error('header_media_url must be a valid URL.');
     }
   }
   return { variableCount: 0 };
@@ -183,24 +183,24 @@ export function validateButtons(buttons: TemplateButton[] | undefined): void {
   if (!buttons || buttons.length === 0) return;
   if (buttons.length > TEMPLATE_LIMITS.maxButtonsTotal) {
     throw new Error(
-      `Modelos podem ter no máximo ${TEMPLATE_LIMITS.maxButtonsTotal} botões (recebido ${buttons.length}).`,
+      `Templates can have at most ${TEMPLATE_LIMITS.maxButtonsTotal} buttons (got ${buttons.length}).`,
     );
   }
 
   const counts = countButtonsByType(buttons);
   if (counts.URL > TEMPLATE_LIMITS.maxUrlButtons) {
     throw new Error(
-      `No máximo ${TEMPLATE_LIMITS.maxUrlButtons} botões de URL permitidos (recebido ${counts.URL}).`,
+      `At most ${TEMPLATE_LIMITS.maxUrlButtons} URL buttons allowed (got ${counts.URL}).`,
     );
   }
   if (counts.PHONE_NUMBER > TEMPLATE_LIMITS.maxPhoneButtons) {
     throw new Error(
-      `No máximo ${TEMPLATE_LIMITS.maxPhoneButtons} botão PHONE_NUMBER permitido (recebido ${counts.PHONE_NUMBER}).`,
+      `At most ${TEMPLATE_LIMITS.maxPhoneButtons} PHONE_NUMBER button allowed (got ${counts.PHONE_NUMBER}).`,
     );
   }
   if (counts.COPY_CODE > TEMPLATE_LIMITS.maxCopyCodeButtons) {
     throw new Error(
-      `No máximo ${TEMPLATE_LIMITS.maxCopyCodeButtons} botão COPY_CODE permitido (recebido ${counts.COPY_CODE}).`,
+      `At most ${TEMPLATE_LIMITS.maxCopyCodeButtons} COPY_CODE button allowed (got ${counts.COPY_CODE}).`,
     );
   }
 
@@ -212,7 +212,7 @@ export function validateButtons(buttons: TemplateButton[] | undefined): void {
     if (b.type === 'QUICK_REPLY') {
       if (sawNonQR) {
         throw new Error(
-          'Botões QUICK_REPLY não podem ser intercalados com botões URL / PHONE_NUMBER / COPY_CODE — agrupe-os no início.',
+          'QUICK_REPLY buttons cannot be interleaved with URL / PHONE_NUMBER / COPY_CODE buttons — group them at the start.',
         );
       }
     } else {
@@ -223,38 +223,38 @@ export function validateButtons(buttons: TemplateButton[] | undefined): void {
   for (let i = 0; i < buttons.length; i++) {
     const b = buttons[i];
     if (!b.text?.trim()) {
-      throw new Error(`O botão #${i + 1} (${b.type}) está sem texto.`);
+      throw new Error(`Button #${i + 1} (${b.type}) is missing text.`);
     }
     if (b.text.length > TEMPLATE_LIMITS.buttonTextMaxLength) {
       throw new Error(
-        `O texto do botão #${i + 1} excede ${TEMPLATE_LIMITS.buttonTextMaxLength} caracteres.`,
+        `Button #${i + 1} text exceeds ${TEMPLATE_LIMITS.buttonTextMaxLength} chars.`,
       );
     }
     switch (b.type) {
       case 'URL': {
         if (!b.url?.trim()) {
-          throw new Error(`O botão de URL #${i + 1} está sem url.`);
+          throw new Error(`URL button #${i + 1} is missing url.`);
         }
         try {
           new URL(b.url);
         } catch {
-          throw new Error(`O botão de URL #${i + 1} tem uma url inválida.`);
+          throw new Error(`URL button #${i + 1} has an invalid url.`);
         }
         const urlVars = extractVariableIndices(b.url);
         if (urlVars.length > 1) {
           throw new Error(
-            `O botão de URL #${i + 1} pode ter no máximo uma variável (regra da Meta).`,
+            `URL button #${i + 1} can have at most one variable (Meta rule).`,
           );
         }
         if (urlVars.length === 1) {
           if (urlVars[0] !== 1) {
             throw new Error(
-              `A variável do botão de URL #${i + 1} deve ser {{1}} (regra da Meta).`,
+              `URL button #${i + 1} variable must be {{1}} (Meta rule).`,
             );
           }
           if (!b.example?.trim()) {
             throw new Error(
-              `O botão de URL #${i + 1} usa {{1}} — a Meta requer um valor de exemplo.`,
+              `URL button #${i + 1} uses {{1}} — Meta requires an example value.`,
             );
           }
         }
@@ -263,14 +263,14 @@ export function validateButtons(buttons: TemplateButton[] | undefined): void {
       case 'PHONE_NUMBER':
         if (!b.phone_number?.trim()) {
           throw new Error(
-            `O botão PHONE_NUMBER #${i + 1} está sem phone_number.`,
+            `PHONE_NUMBER button #${i + 1} is missing phone_number.`,
           );
         }
         break;
       case 'COPY_CODE':
         if (!b.example?.trim()) {
           throw new Error(
-            `O botão COPY_CODE #${i + 1} está sem valor de exemplo.`,
+            `COPY_CODE button #${i + 1} is missing example value.`,
           );
         }
         break;
@@ -293,22 +293,22 @@ export function validateSampleValues(
 
   if (body.length !== bodyVarCount) {
     throw new Error(
-      `O corpo tem ${bodyVarCount} variável(is) — forneça exatamente ${bodyVarCount} valor(es) de exemplo (recebido ${body.length}).`,
+      `Body has ${bodyVarCount} variable(s) — supply exactly ${bodyVarCount} sample value(s) (got ${body.length}).`,
     );
   }
   if (header.length !== headerVarCount) {
     throw new Error(
-      `O cabeçalho tem ${headerVarCount} variável(is) — forneça exatamente ${headerVarCount} valor(es) de exemplo (recebido ${header.length}).`,
+      `Header has ${headerVarCount} variable(s) — supply exactly ${headerVarCount} sample value(s) (got ${header.length}).`,
     );
   }
   for (let i = 0; i < body.length; i++) {
     if (!body[i] || !body[i].trim()) {
-      throw new Error(`O valor de exemplo #${i + 1} do corpo está vazio.`);
+      throw new Error(`Body sample value #${i + 1} is empty.`);
     }
   }
   for (let i = 0; i < header.length; i++) {
     if (!header[i] || !header[i].trim()) {
-      throw new Error(`O valor de exemplo #${i + 1} do cabeçalho está vazio.`);
+      throw new Error(`Header sample value #${i + 1} is empty.`);
     }
   }
 }
@@ -324,7 +324,7 @@ export function validateTemplatePayload(payload: TemplatePayload): {
 } {
   validateTemplateName(payload.name);
   if (!payload.language?.trim()) {
-    throw new Error('O idioma é obrigatório.');
+    throw new Error('Language is required.');
   }
   const bodyVars = validateBody(payload.body_text);
   validateFooter(payload.footer_text);
