@@ -1000,7 +1000,8 @@
         "matchContains": "Contém",
         "matchExact": "Exata",
         "closeConversationHint": "Define o status da conversa como \"encerrada\". Nenhuma configuração necessária."
-      }
+      },
+      "delete": "Excluir"
     }
   },
   "Flows": {

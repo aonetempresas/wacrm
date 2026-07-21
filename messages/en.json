@@ -1000,7 +1000,8 @@
         "matchContains": "Contains",
         "matchExact": "Exact",
         "closeConversationHint": "Sets the conversation status to \"closed\". No configuration needed."
-      }
+      },
+      "delete": "Delete"
     }
   },
   "Flows": {
