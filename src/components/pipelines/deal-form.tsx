@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
-import { CURRENCIES } from "@/lib/currency";
 import type {
   Contact,
   Conversation,
@@ -28,13 +27,21 @@ import {
   X,
   Trash2,
   MessageSquare,
-  DollarSign,
   Loader2,
   CalendarClock,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 import { TaskForm } from "@/components/agenda/task-form";
+import { cn } from "@/lib/utils";
+import {
+  AONET_CHANNELS,
+  AONET_LOSS_REASONS,
+  AONET_PRODUCTS,
+  AONET_TEMPERATURES,
+  TEMPERATURE_STYLE,
+  type AonetTemperature,
+} from "@/lib/crm/aonet-lists";
 
 interface DealFormProps {
   open: boolean;
@@ -56,17 +63,26 @@ export function DealForm({
   onSaved,
 }: DealFormProps) {
   const t = useTranslations("Pipelines.form");
+  const tTemp = useTranslations("Pipelines.temperature");
+  const tChan = useTranslations("Pipelines.channels");
+  const tProd = useTranslations("Pipelines.products");
+  const tLoss = useTranslations("Pipelines.lostReasons");
   const supabase = createClient();
   const { accountId, defaultCurrency } = useAuth();
 
-  const [title, setTitle] = useState("");
   const [value, setValue] = useState("");
-  const [currency, setCurrency] = useState(defaultCurrency);
   const [contactId, setContactId] = useState("");
   const [stageId, setStageId] = useState("");
   const [assignedTo, setAssignedTo] = useState("");
   const [expectedCloseDate, setExpectedCloseDate] = useState("");
   const [notes, setNotes] = useState("");
+  // Lead qualification (Aonet Fase A)
+  const [temperature, setTemperature] = useState<AonetTemperature | "">("");
+  const [sourceChannel, setSourceChannel] = useState("");
+  const [products, setProducts] = useState<string[]>([]);
+  const [lostReasons, setLostReasons] = useState<string[]>([]);
+  const [lostReasonNote, setLostReasonNote] = useState("");
+  const [showLostPicker, setShowLostPicker] = useState(false);
 
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
@@ -86,10 +102,9 @@ export function DealForm({
   useEffect(() => {
     if (!open) return;
     setConfirmDelete(false);
+    setShowLostPicker(false);
     if (deal) {
-      setTitle(deal.title);
       setValue(String(deal.value ?? ""));
-      setCurrency(deal.currency || defaultCurrency);
       // contact_id is nullable when the contact has been deleted
       // (migration 004: ON DELETE SET NULL). "" means "no selection".
       setContactId(deal.contact_id ?? "");
@@ -97,17 +112,25 @@ export function DealForm({
       setAssignedTo(deal.assigned_to ?? "");
       setExpectedCloseDate(deal.expected_close_date ?? "");
       setNotes(deal.notes ?? "");
+      setTemperature((deal.temperature as AonetTemperature) ?? "");
+      setSourceChannel(deal.source_channel ?? "");
+      setProducts(deal.products ?? []);
+      setLostReasons(deal.lost_reasons ?? []);
+      setLostReasonNote(deal.lost_reason_note ?? "");
     } else {
-      setTitle("");
       setValue("");
-      setCurrency(defaultCurrency);
       setContactId("");
       setStageId(defaultStageId || stages[0]?.id || "");
       setAssignedTo("");
       setExpectedCloseDate("");
       setNotes("");
+      setTemperature("");
+      setSourceChannel("");
+      setProducts([]);
+      setLostReasons([]);
+      setLostReasonNote("");
     }
-  }, [open, deal, defaultStageId, stages, defaultCurrency]);
+  }, [open, deal, defaultStageId, stages]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   // Load supporting data once the sheet is open
@@ -155,22 +178,38 @@ export function DealForm({
   }, [open, contactId, supabase]);
 
   async function handleSave() {
-    if (!title.trim() || !contactId || !stageId) {
+    if (!contactId || !stageId) {
       toast.error(t("toastRequired"));
       return;
     }
     setSaving(true);
 
+    // The deal has no user-typed title anymore. Build a readable
+    // identifier from the contact + first product (e.g. "Padaria do
+    // João · Link Dedicado") so two deals of the same contact stay
+    // distinguishable. `title` is NOT NULL in the DB, hence the
+    // fallback chain (contact always has at least a phone).
+    const selectedContact = contacts.find((c) => c.id === contactId);
+    const contactName = selectedContact?.name || selectedContact?.phone || "";
+    const productLabel = products.length ? tProd(products[0]) : "";
+    const autoTitle =
+      (productLabel ? `${contactName} · ${productLabel}` : contactName) ||
+      t("untitledDeal");
+
     const payload = {
-      title: title.trim(),
+      title: autoTitle,
       value: parseFloat(value) || 0,
-      currency,
+      currency: defaultCurrency,
       contact_id: contactId,
       pipeline_id: pipelineId,
       stage_id: stageId,
       assigned_to: assignedTo || null,
       notes: notes.trim() || null,
       expected_close_date: expectedCloseDate || null,
+      // Lead qualification (Aonet Fase A) — all optional
+      temperature: temperature || null,
+      source_channel: sourceChannel || null,
+      products,
     };
 
     if (deal) {
@@ -233,6 +272,34 @@ export function DealForm({
     onSaved();
   }
 
+  // Marking a deal lost requires a reason (briefing: motivo da perda
+  // obrigatório no estágio "Não fechou"). Separate from handleStatusChange
+  // because it also writes the loss fields.
+  async function handleMarkLost() {
+    if (!deal) return;
+    if (lostReasons.length === 0) {
+      toast.error(t("lostReasonRequired"));
+      return;
+    }
+    setStatusAction("lost");
+    const { error } = await supabase
+      .from("deals")
+      .update({
+        status: "lost",
+        lost_reasons: lostReasons,
+        lost_reason_note: lostReasonNote.trim() || null,
+      })
+      .eq("id", deal.id);
+    setStatusAction(null);
+    if (error) {
+      toast.error(t("toastFailedStatus"));
+      return;
+    }
+    toast.success(t("toastMarkedLost"));
+    onOpenChange(false);
+    onSaved();
+  }
+
   async function handleDelete() {
     if (!deal) return;
     setDeleting(true);
@@ -264,16 +331,6 @@ export function DealForm({
 
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
             <div className="grid gap-2">
-              <Label className="text-muted-foreground">{t("title")}</Label>
-              <Input
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder={t("titlePlaceholder")}
-                className="border-border bg-muted text-foreground"
-              />
-            </div>
-
-            <div className="grid gap-2">
               <Label className="text-muted-foreground">{t("contact")}</Label>
               <select
                 value={contactId}
@@ -299,33 +356,102 @@ export function DealForm({
               )}
             </div>
 
-            <div className="grid grid-cols-[1fr_110px] gap-3">
+            {/* ---- Qualificação do lead (Aonet Fase A) ---- */}
+            <div className="space-y-3 rounded-lg border border-border bg-muted/30 p-3">
+              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                {t("qualificationSection")}
+              </p>
+
+              {/* Temperatura */}
+              <div className="grid gap-2">
+                <Label className="text-muted-foreground">{t("temperature")}</Label>
+                <div className="flex gap-2">
+                  {AONET_TEMPERATURES.map((temp) => {
+                    const active = temperature === temp;
+                    const style = TEMPERATURE_STYLE[temp];
+                    return (
+                      <button
+                        key={temp}
+                        type="button"
+                        onClick={() => setTemperature(active ? "" : temp)}
+                        className={cn(
+                          "flex flex-1 items-center justify-center gap-1.5 rounded-lg border px-2 py-1.5 text-sm font-medium transition-colors",
+                          active
+                            ? style.chip
+                            : "border-border bg-muted text-muted-foreground hover:bg-muted/70",
+                        )}
+                      >
+                        <span className={cn("h-2 w-2 rounded-full", style.dot)} />
+                        {tTemp(temp)}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Canal de origem */}
+              <div className="grid gap-2">
+                <Label className="text-muted-foreground">{t("sourceChannel")}</Label>
+                <select
+                  value={sourceChannel}
+                  onChange={(e) => setSourceChannel(e.target.value)}
+                  className="h-9 w-full rounded-lg border border-border bg-muted px-2.5 text-sm text-foreground outline-none focus:border-primary"
+                >
+                  <option value="">{t("sourceChannelNone")}</option>
+                  {AONET_CHANNELS.map((ch) => (
+                    <option key={ch} value={ch}>
+                      {tChan(ch)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Valor (R$) — um único campo: o valor do negócio */}
               <div className="grid gap-2">
                 <Label className="text-muted-foreground">{t("value")}</Label>
                 <div className="relative">
-                  <DollarSign className="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground">
+                    R$
+                  </span>
                   <Input
                     type="number"
                     value={value}
                     onChange={(e) => setValue(e.target.value)}
-                    placeholder="0"
-                    className="border-border bg-muted pl-7 text-foreground"
+                    placeholder="0,00"
+                    className="border-border bg-muted pl-9 text-foreground"
                   />
                 </div>
               </div>
+
+              {/* Produtos de interesse (múltipla escolha) */}
               <div className="grid gap-2">
-                <Label className="text-muted-foreground">{t("currency")}</Label>
-                <select
-                  value={currency}
-                  onChange={(e) => setCurrency(e.target.value)}
-                  className="h-9 w-full rounded-lg border border-border bg-muted px-2.5 text-sm text-foreground outline-none focus:border-primary"
-                >
-                  {CURRENCIES.map((c) => (
-                    <option key={c.code} value={c.code}>
-                      {c.code}
-                    </option>
-                  ))}
-                </select>
+                <Label className="text-muted-foreground">{t("products")}</Label>
+                <div className="flex flex-wrap gap-1.5">
+                  {AONET_PRODUCTS.map((p) => {
+                    const active = products.includes(p);
+                    return (
+                      <button
+                        key={p}
+                        type="button"
+                        onClick={() =>
+                          setProducts((prev) =>
+                            prev.includes(p)
+                              ? prev.filter((x) => x !== p)
+                              : [...prev, p],
+                          )
+                        }
+                        className={cn(
+                          "rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
+                          active
+                            ? "border-primary/40 bg-primary/10 text-primary"
+                            : "border-border bg-muted text-muted-foreground hover:bg-muted/70",
+                        )}
+                      >
+                        {tProd(p)}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
 
@@ -403,20 +529,67 @@ export function DealForm({
                   </Button>
                   <Button
                     type="button"
-                    onClick={() => handleStatusChange("lost")}
+                    onClick={() => setShowLostPicker((v) => !v)}
                     disabled={!!statusAction || deal.status === "lost"}
                     className="flex-1 bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
                   >
-                    {statusAction === "lost" ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <>
-                        <X className="mr-1 h-4 w-4" />
-                        {t("markAsLost")}
-                      </>
-                    )}
+                    <X className="mr-1 h-4 w-4" />
+                    {t("markAsLost")}
                   </Button>
                 </div>
+
+                {/* Loss-reason picker — appears when marking as lost.
+                    At least one reason is required (briefing 8.1 / L6). */}
+                {showLostPicker && deal.status !== "lost" && (
+                  <div className="space-y-2 rounded-md border border-red-500/30 bg-red-500/10 p-2.5">
+                    <p className="text-xs font-medium text-red-300">{t("lostReason")}</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {AONET_LOSS_REASONS.map((r) => {
+                        const active = lostReasons.includes(r);
+                        return (
+                          <button
+                            key={r}
+                            type="button"
+                            onClick={() =>
+                              setLostReasons((prev) =>
+                                prev.includes(r)
+                                  ? prev.filter((x) => x !== r)
+                                  : [...prev, r],
+                              )
+                            }
+                            className={cn(
+                              "rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
+                              active
+                                ? "border-red-500/50 bg-red-500/20 text-red-200"
+                                : "border-border bg-muted text-muted-foreground hover:bg-muted/70",
+                            )}
+                          >
+                            {tLoss(r)}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <Textarea
+                      value={lostReasonNote}
+                      onChange={(e) => setLostReasonNote(e.target.value)}
+                      placeholder={t("lostReasonNotePlaceholder")}
+                      className="min-h-[60px] border-border bg-muted text-sm text-foreground"
+                    />
+                    <Button
+                      type="button"
+                      onClick={handleMarkLost}
+                      disabled={!!statusAction || lostReasons.length === 0}
+                      className="w-full bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
+                    >
+                      {statusAction === "lost" ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        t("markAsLost")
+                      )}
+                    </Button>
+                  </div>
+                )}
+
                 {deal.status && deal.status !== "open" && (
                   <Button
                     type="button"
@@ -454,7 +627,7 @@ export function DealForm({
               </Button>
               <Button
                 onClick={handleSave}
-                disabled={saving || !title.trim() || !contactId || !stageId}
+                disabled={saving || !contactId || !stageId}
                 className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
               >
                 {saving ? t("saving") : deal ? t("saveChanges") : t("createDeal")}

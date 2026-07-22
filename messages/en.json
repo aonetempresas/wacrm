@@ -532,17 +532,19 @@
     "card": {
       "noContact": "No contact",
       "won": "Won",
-      "lost": "Lost"
+      "lost": "Lost",
+      "perMonth": "/mo"
     },
     "form": {
       "editDeal": "Edit Deal",
       "newDeal": "New Deal",
+      "untitledDeal": "Deal",
       "title": "Title",
       "titlePlaceholder": "Deal title",
       "contact": "Contact",
       "selectContact": "Select a contact",
       "linkToConversation": "Link to Conversation",
-      "value": "Value",
+      "value": "Value (R$)",
       "currency": "Currency",
       "expectedCloseDate": "Expected Close Date",
       "stage": "Stage",
@@ -562,7 +564,7 @@
       "confirm": "Confirm",
       "deleting": "Deleting...",
       "deleteDeal": "Delete Deal",
-      "toastRequired": "Title, contact, and stage are required",
+      "toastRequired": "Contact and stage are required",
       "toastFailedSave": "Failed to save deal",
       "toastNotSignedIn": "Not signed in",
       "toastNotLinked": "Your profile is not linked to an account.",
@@ -575,7 +577,54 @@
       "toastReopened": "Deal reopened",
       "toastFailedDelete": "Failed to delete deal",
       "toastDeleted": "Deal deleted",
-      "scheduleTask": "Schedule task"
+      "scheduleTask": "Schedule task",
+      "qualificationSection": "Qualification",
+      "temperature": "Temperature",
+      "temperatureNone": "No rating",
+      "sourceChannel": "Source channel",
+      "sourceChannelNone": "Select channel",
+      "monthlyValue": "Monthly value (MRR)",
+      "monthlyValueHint": "How much the client pays per month (recurring)",
+      "setupValue": "Setup (one-time)",
+      "products": "Products of interest",
+      "lostReason": "Loss reason",
+      "lostReasonRequired": "Select at least one loss reason",
+      "lostReasonNote": "Loss note (optional)",
+      "lostReasonNotePlaceholder": "Reason detail..."
+    },
+    "temperature": {
+      "quente": "Hot",
+      "morno": "Warm",
+      "frio": "Cold"
+    },
+    "channels": {
+      "prospeccao_plataforma": "Active prospecting (platform)",
+      "prospeccao_pap": "Active prospecting (door-to-door)",
+      "receptivo": "Inbound",
+      "trafego_pago": "Paid traffic",
+      "indicacao_parceiro": "Partner referral",
+      "venda_parceiro": "Partner sale (reseller)",
+      "base_ativa": "Existing base (upsell)"
+    },
+    "products": {
+      "link_dedicado": "Dedicated Link",
+      "link_corporativo": "Corporate Link",
+      "pme": "SMB",
+      "lan_to_lan": "LAN to LAN",
+      "wifi_corporativo": "Corporate Wi-Fi",
+      "servico_ti": "IT Service",
+      "aonet_360": "Aonet 360",
+      "voz": "Voice (telephony)",
+      "movel": "Mobile",
+      "redundancia": "Redundancy Service"
+    },
+    "lostReasons": {
+      "preco": "Price",
+      "prazo_ativacao": "Activation time",
+      "inviabilidade_tecnica": "Technically unfeasible (no network)",
+      "sem_retorno": "No response from client",
+      "projeto_adiado": "Project postponed / canceled",
+      "outro": "Other"
     },
     "settings": {
       "managePipeline": "Manage Pipeline",

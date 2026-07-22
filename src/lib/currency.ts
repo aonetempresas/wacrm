@@ -46,10 +46,12 @@ export const CURRENCIES: CurrencyOption[] = [
 ];
 
 /**
- * Format a deal value as a currency string. Whole-number output
- * (no minor units) — deal values are tracked to the dollar across
- * the app. `currency` defaults to USD so callers with nothing better
- * stay safe, but pass the account/deal currency wherever known.
+ * Format a deal value as a currency string. Uses each currency's
+ * natural minor units (BRL/USD → 2 decimals, JPY → 0) by letting
+ * `Intl.NumberFormat` pick the default fraction digits, so R$ 229,90
+ * reads correctly instead of being rounded to R$ 230. `currency`
+ * defaults to USD so callers with nothing better stay safe, but pass
+ * the account/deal currency wherever known.
  *
  * Total by design: `Intl.NumberFormat` throws a RangeError on a
  * structurally invalid currency code, and `deals.currency` carries
@@ -68,8 +70,6 @@ export function formatCurrency(
     return new Intl.NumberFormat(undefined, {
       style: "currency",
       currency: code,
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
     }).format(amount);
   } catch {
     // Invalid ISO code — show the raw code + grouped number so the

@@ -353,6 +353,9 @@ export interface PipelineStage {
 
 export type DealStatus = 'open' | 'won' | 'lost';
 
+/** Lead heat (Aonet briefing 4.2). Fixed set — has a colour cue. */
+export type DealTemperature = 'quente' | 'morno' | 'frio';
+
 export interface Deal {
   id: string;
   user_id: string;
@@ -371,6 +374,22 @@ export interface Deal {
   notes?: string;
   expected_close_date?: string;
   status?: DealStatus;
+  // ---- Lead qualification (migration 038, Aonet Fase A) ----
+  /** Subjective heat — quente/morno/frio (4.2). */
+  temperature?: DealTemperature | null;
+  /** Where the lead came from — a slug from AONET_CHANNELS (4.1 / L1). */
+  source_channel?: string | null;
+  /** MRR: recurring monthly amount in R$ (4.3). The legacy `value`
+   *  stays the one-off total so current dashboards keep working. */
+  monthly_value?: number | null;
+  /** One-time install/setup fee in R$ (4.3), optional. */
+  setup_value?: number | null;
+  /** Products of interest — slugs from AONET_PRODUCTS (L4). */
+  products?: string[];
+  /** Reason(s) the deal was lost — slugs from AONET_LOSS_REASONS (L6). */
+  lost_reasons?: string[];
+  /** Free-text detail for the loss (e.g. when "outro" is picked). */
+  lost_reason_note?: string | null;
   created_at: string;
   updated_at?: string;
   contact?: Contact;

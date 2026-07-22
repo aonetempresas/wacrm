@@ -3,6 +3,8 @@
 import type { Deal, PipelineStage } from "@/types";
 import { Calendar, Check, X } from "lucide-react";
 import { formatCurrency } from "@/lib/currency";
+import { cn } from "@/lib/utils";
+import { TEMPERATURE_STYLE, type AonetTemperature } from "@/lib/crm/aonet-lists";
 import { useTranslations } from "next-intl";
 
 interface DealCardProps {
@@ -28,8 +30,10 @@ function initials(name?: string, fallback?: string) {
 
 export function DealCard({ deal, stage, onEdit, isOverlay }: DealCardProps) {
   const t = useTranslations("Pipelines.card");
+  const tTemp = useTranslations("Pipelines.temperature");
   const contactLabel = deal.contact?.name || deal.contact?.phone || t("noContact");
   const assigneeLabel = deal.assignee?.full_name || null;
+  const temp = deal.temperature as AonetTemperature | null | undefined;
 
   return (
     <button
@@ -41,11 +45,16 @@ export function DealCard({ deal, stage, onEdit, isOverlay }: DealCardProps) {
         e.stopPropagation();
         onEdit(deal);
       }}
-      className={`group relative w-full cursor-pointer rounded-xl border border-border/50 bg-muted/70 pl-4 pr-3 py-3 text-left shadow-sm transition-all ${
-        isOverlay
-          ? "shadow-xl"
-          : "hover:-translate-y-0.5 hover:border-border hover:bg-muted hover:shadow-lg"
-      }`}
+      title={temp ? tTemp(temp) : undefined}
+      className={cn(
+        "group relative w-full cursor-pointer rounded-xl border pl-4 pr-3 py-3 text-left shadow-sm transition-all",
+        // Whole-card tint by temperature (soft border + faint bg); falls
+        // back to the neutral card when the deal has no heat set.
+        temp && TEMPERATURE_STYLE[temp]
+          ? TEMPERATURE_STYLE[temp].card
+          : "border-border/50 bg-muted/70",
+        isOverlay ? "shadow-xl" : "hover:-translate-y-0.5 hover:shadow-lg",
+      )}
     >
       {/* 4px left accent bar using stage color */}
       <span

@@ -532,17 +532,19 @@
     "card": {
       "noContact": "Sem contato",
       "won": "Ganho",
-      "lost": "Perdido"
+      "lost": "Perdido",
+      "perMonth": "/mês"
     },
     "form": {
       "editDeal": "Editar negócio",
       "newDeal": "Novo negócio",
+      "untitledDeal": "Negócio",
       "title": "Título",
       "titlePlaceholder": "Título do negócio",
       "contact": "Contato",
       "selectContact": "Selecione um contato",
       "linkToConversation": "Vincular à conversa",
-      "value": "Valor",
+      "value": "Valor (R$)",
       "currency": "Moeda",
       "expectedCloseDate": "Data prevista de fechamento",
       "stage": "Etapa",
@@ -562,7 +564,7 @@
       "confirm": "Confirmar",
       "deleting": "Excluindo...",
       "deleteDeal": "Excluir negócio",
-      "toastRequired": "Título, contato e etapa são obrigatórios",
+      "toastRequired": "Contato e etapa são obrigatórios",
       "toastFailedSave": "Falha ao salvar o negócio",
       "toastNotSignedIn": "Não autenticado",
       "toastNotLinked": "Seu perfil não está vinculado a uma conta.",
@@ -575,7 +577,54 @@
       "toastReopened": "Negócio reaberto",
       "toastFailedDelete": "Falha ao excluir o negócio",
       "toastDeleted": "Negócio excluído",
-      "scheduleTask": "Agendar tarefa"
+      "scheduleTask": "Agendar tarefa",
+      "qualificationSection": "Qualificação",
+      "temperature": "Temperatura",
+      "temperatureNone": "Sem classificação",
+      "sourceChannel": "Canal de origem",
+      "sourceChannelNone": "Selecionar canal",
+      "monthlyValue": "Valor mensal (MRR)",
+      "monthlyValueHint": "Quanto o cliente paga por mês (recorrente)",
+      "setupValue": "Instalação (única vez)",
+      "products": "Produtos de interesse",
+      "lostReason": "Motivo da perda",
+      "lostReasonRequired": "Selecione ao menos um motivo da perda",
+      "lostReasonNote": "Observação da perda (opcional)",
+      "lostReasonNotePlaceholder": "Detalhe do motivo..."
+    },
+    "temperature": {
+      "quente": "Quente",
+      "morno": "Morno",
+      "frio": "Frio"
+    },
+    "channels": {
+      "prospeccao_plataforma": "Prospecção ativa (plataforma)",
+      "prospeccao_pap": "Prospecção ativa (PAP)",
+      "receptivo": "Receptivo",
+      "trafego_pago": "Tráfego pago",
+      "indicacao_parceiro": "Indicação parceiro",
+      "venda_parceiro": "Venda parceiro (revenda)",
+      "base_ativa": "Base ativa (upsell)"
+    },
+    "products": {
+      "link_dedicado": "Link Dedicado",
+      "link_corporativo": "Link Corporativo",
+      "pme": "PME",
+      "lan_to_lan": "LAN to LAN",
+      "wifi_corporativo": "Wi-Fi Corporativo",
+      "servico_ti": "Serviço de TI",
+      "aonet_360": "Aonet 360",
+      "voz": "Voz (telefonia)",
+      "movel": "Móvel",
+      "redundancia": "Serviço de Redundância"
+    },
+    "lostReasons": {
+      "preco": "Preço",
+      "prazo_ativacao": "Prazo de ativação",
+      "inviabilidade_tecnica": "Inviabilidade técnica (sem rede)",
+      "sem_retorno": "Sem retorno do cliente",
+      "projeto_adiado": "Projeto adiado / cancelado",
+      "outro": "Outro"
     },
     "settings": {
       "managePipeline": "Gerenciar funil",
