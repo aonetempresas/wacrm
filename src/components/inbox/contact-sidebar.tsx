@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
-import type { Contact, Deal, ContactNote, Tag } from "@/types";
+import type { Contact, Conversation, Deal, ContactNote, Tag, Task } from "@/types";
 import {
   Phone,
   Mail,
@@ -15,23 +15,37 @@ import {
   DollarSign,
   StickyNote,
   Plus,
+  CalendarClock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { TaskForm } from "@/components/agenda/task-form";
 import { format } from "date-fns";
 import { useTranslations } from "next-intl";
 
+const TASK_TYPE_KEY: Record<string, string> = {
+  call: "typeCall",
+  meeting: "typeMeeting",
+  follow_up: "typeFollowUp",
+  whatsapp: "typeWhatsapp",
+  other: "typeOther",
+};
+
 interface ContactSidebarProps {
   contact: Contact | null;
+  conversation?: Conversation | null;
 }
 
-export function ContactSidebar({ contact }: ContactSidebarProps) {
+export function ContactSidebar({ contact, conversation }: ContactSidebarProps) {
   const tSidebar = useTranslations("Inbox.sidebar");
   const tThread = useTranslations("Inbox.messageThread");
+  const ta = useTranslations("Agenda");
 
   const { accountId } = useAuth();
   const [copied, setCopied] = useState(false);
   const [deals, setDeals] = useState<Deal[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [taskFormOpen, setTaskFormOpen] = useState(false);
   const [notes, setNotes] = useState<ContactNote[]>([]);
   const [tags, setTags] = useState<(Tag & { contact_tag_id: string })[]>([]);
   const [newNote, setNewNote] = useState("");
@@ -42,8 +56,8 @@ export function ContactSidebar({ contact }: ContactSidebarProps) {
 
     const supabase = createClient();
 
-    // Fetch deals, notes, and tags in parallel
-    const [dealsRes, notesRes, tagsRes] = await Promise.all([
+    // Fetch deals, notes, tags and tasks in parallel
+    const [dealsRes, notesRes, tagsRes, tasksRes] = await Promise.all([
       supabase
         .from("deals")
         .select("*, stage:pipeline_stages(*)")
@@ -58,9 +72,15 @@ export function ContactSidebar({ contact }: ContactSidebarProps) {
         .from("contact_tags")
         .select("id, tag_id, tags(*)")
         .eq("contact_id", contact.id),
+      supabase
+        .from("tasks")
+        .select("*")
+        .eq("contact_id", contact.id)
+        .order("due_at", { ascending: true }),
     ]);
 
     if (dealsRes.data) setDeals(dealsRes.data);
+    if (tasksRes.data) setTasks(tasksRes.data as Task[]);
     if (notesRes.data) setNotes(notesRes.data);
     if (tagsRes.data) {
       const mapped = tagsRes.data
@@ -131,6 +151,7 @@ export function ContactSidebar({ contact }: ContactSidebarProps) {
   const initials = displayName.charAt(0).toUpperCase();
 
   return (
+    <>
     <div className="flex h-full w-70 flex-col border-l border-border bg-card">
       <ScrollArea className="flex-1">
         <div className="p-4">
@@ -254,6 +275,52 @@ export function ContactSidebar({ contact }: ContactSidebarProps) {
           {/* Divider */}
           <div className="my-4 border-t border-border" />
 
+          {/* Tasks */}
+          <div>
+            <div className="flex items-center justify-between gap-2 px-1">
+              <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                <CalendarClock className="h-3 w-3" />
+                {tSidebar("tasks")}
+              </div>
+              <button
+                type="button"
+                onClick={() => setTaskFormOpen(true)}
+                className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium text-primary hover:bg-primary/10"
+              >
+                <Plus className="h-3 w-3" /> {tSidebar("scheduleTask")}
+              </button>
+            </div>
+            <div className="mt-2 space-y-2">
+              {tasks.length === 0 ? (
+                <p className="px-1 text-xs text-muted-foreground">{tSidebar("noTasks")}</p>
+              ) : (
+                tasks.map((task) => {
+                  const d = new Date(task.due_at);
+                  const isDone = task.status !== "pending";
+                  return (
+                    <div key={task.id} className="rounded-lg bg-muted px-3 py-2">
+                      <p
+                        className={`text-xs font-medium ${
+                          isDone ? "text-muted-foreground line-through" : "text-foreground"
+                        }`}
+                      >
+                        {task.title}
+                      </p>
+                      <p className="mt-0.5 text-[10px] text-muted-foreground">
+                        {d.toLocaleDateString(undefined, { day: "2-digit", month: "short" })} ·{" "}
+                        {d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })} ·{" "}
+                        {ta(TASK_TYPE_KEY[task.type])}
+                      </p>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+
+          {/* Divider */}
+          <div className="my-4 border-t border-border" />
+
           {/* Notes */}
           <div>
             <div className="flex items-center gap-2 px-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">
@@ -299,5 +366,13 @@ export function ContactSidebar({ contact }: ContactSidebarProps) {
         </div>
       </ScrollArea>
     </div>
+    <TaskForm
+      open={taskFormOpen}
+      onOpenChange={setTaskFormOpen}
+      defaultContactId={contact.id}
+      defaultConversationId={conversation?.id ?? null}
+      onSaved={fetchContactData}
+    />
+    </>
   );
 }

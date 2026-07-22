@@ -275,7 +275,10 @@
       "deals": "Negócios",
       "noTags": "Nenhuma tag",
       "noDeals": "Nenhum negócio",
-      "addNotePlaceholder": "Adicionar uma nota..."
+      "addNotePlaceholder": "Adicionar uma nota...",
+      "tasks": "Tarefas",
+      "noTasks": "Nenhuma tarefa",
+      "scheduleTask": "Agendar"
     },
     "aiBanner": {
       "pausedTitle": "O assistente de IA está pausado aqui",
@@ -363,7 +366,14 @@
       "dupSimilar": "Já existe um contato com um número muito parecido.",
       "loadingTags": "Carregando tags...",
       "noTagsAvailable": "Nenhuma tag disponível. Crie tags nas Configurações.",
-      "phoneRequired": "O número de telefone é obrigatório"
+      "phoneRequired": "O número de telefone é obrigatório",
+      "scheduleToggle": "Agendar uma atividade (opcional)",
+      "scheduleTitleLabel": "Título",
+      "scheduleTitlePlaceholder": "Primeiro contato com o lead",
+      "scheduleTypeLabel": "Tipo",
+      "scheduleDateLabel": "Data",
+      "scheduleTimeLabel": "Hora",
+      "scheduleFailed": "Contato salvo, mas não consegui criar a tarefa."
     },
     "detailView": {
       "tabs": {
@@ -375,7 +385,10 @@
         "tags": "Tags",
         "noTags": "Nenhuma tag",
         "noDeals": "Nenhum negócio",
-        "addNotePlaceholder": "Adicionar uma nota..."
+        "addNotePlaceholder": "Adicionar uma nota...",
+        "tasks": "Tarefas",
+        "noTasks": "Nenhuma tarefa ainda",
+        "scheduleTask": "Agendar"
       },
       "actions": {
         "edit": "Editar",
@@ -561,7 +574,8 @@
       "toastMarkedLost": "Marcado como perdido",
       "toastReopened": "Negócio reaberto",
       "toastFailedDelete": "Falha ao excluir o negócio",
-      "toastDeleted": "Negócio excluído"
+      "toastDeleted": "Negócio excluído",
+      "scheduleTask": "Agendar tarefa"
     },
     "settings": {
       "managePipeline": "Gerenciar funil",

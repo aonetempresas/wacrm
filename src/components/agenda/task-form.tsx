@@ -45,9 +45,21 @@ interface TaskFormProps {
   onOpenChange: (open: boolean) => void;
   task?: Task | null;
   onSaved: () => void;
+  /** Pre-fill for a NEW task opened from a lead / conversation / deal. */
+  defaultContactId?: string | null;
+  defaultDealId?: string | null;
+  defaultConversationId?: string | null;
 }
 
-export function TaskForm({ open, onOpenChange, task, onSaved }: TaskFormProps) {
+export function TaskForm({
+  open,
+  onOpenChange,
+  task,
+  onSaved,
+  defaultContactId,
+  defaultDealId,
+  defaultConversationId,
+}: TaskFormProps) {
   const t = useTranslations("Agenda");
   const supabase = createClient();
   const { accountId, user } = useAuth();
@@ -95,11 +107,11 @@ export function TaskForm({ open, onOpenChange, task, onSaved }: TaskFormProps) {
       setDate(`${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`);
       setTime("09:00");
       setDescription("");
-      setContactId("");
-      setDealId("");
+      setContactId(defaultContactId ?? "");
+      setDealId(defaultDealId ?? "");
       setAssignedTo(user?.id ?? "");
     }
-  }, [open, task, user?.id]);
+  }, [open, task, user?.id, defaultContactId, defaultDealId]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   // Load supporting data (contacts + members) once the sheet is open.
@@ -178,6 +190,7 @@ export function TaskForm({ open, onOpenChange, task, onSaved }: TaskFormProps) {
         ...payload,
         account_id: accountId,
         created_by: user.id,
+        conversation_id: defaultConversationId ?? null,
         status: "pending",
       });
       if (error) {

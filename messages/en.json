@@ -275,7 +275,10 @@
       "deals": "Deals",
       "noTags": "No tags",
       "noDeals": "No deals",
-      "addNotePlaceholder": "Add a note..."
+      "addNotePlaceholder": "Add a note...",
+      "tasks": "Tasks",
+      "noTasks": "No tasks",
+      "scheduleTask": "Schedule"
     },
     "aiBanner": {
       "pausedTitle": "AI assistant is paused here",
@@ -363,7 +366,14 @@
       "dupSimilar": "A contact with a very similar number already exists.",
       "loadingTags": "Loading tags...",
       "noTagsAvailable": "No tags available. Create tags in Settings.",
-      "phoneRequired": "Phone number is required"
+      "phoneRequired": "Phone number is required",
+      "scheduleToggle": "Schedule an activity (optional)",
+      "scheduleTitleLabel": "Title",
+      "scheduleTitlePlaceholder": "First contact with the lead",
+      "scheduleTypeLabel": "Type",
+      "scheduleDateLabel": "Date",
+      "scheduleTimeLabel": "Time",
+      "scheduleFailed": "Contact saved, but the task could not be created."
     },
     "detailView": {
       "tabs": {
@@ -375,7 +385,10 @@
         "tags": "Tags",
         "noTags": "No tags",
         "noDeals": "No deals",
-        "addNotePlaceholder": "Add a note..."
+        "addNotePlaceholder": "Add a note...",
+        "tasks": "Tasks",
+        "noTasks": "No tasks yet",
+        "scheduleTask": "Schedule"
       },
       "actions": {
         "edit": "Edit",
@@ -561,7 +574,8 @@
       "toastMarkedLost": "Marked as lost",
       "toastReopened": "Deal reopened",
       "toastFailedDelete": "Failed to delete deal",
-      "toastDeleted": "Deal deleted"
+      "toastDeleted": "Deal deleted",
+      "scheduleTask": "Schedule task"
     },
     "settings": {
       "managePipeline": "Manage Pipeline",

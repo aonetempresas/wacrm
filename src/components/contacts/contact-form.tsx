@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/hooks/use-auth';
 import { addContactTag, deleteContactTag } from '@/lib/contacts/tag-api';
 import { toast } from 'sonner';
-import type { Contact, Tag, ContactTag } from '@/types';
+import type { Contact, Tag, ContactTag, TaskType } from '@/types';
 import {
   findExistingContact,
   isExactMatch,
@@ -24,8 +24,17 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, AlertTriangle } from 'lucide-react';
+import { Loader2, AlertTriangle, CalendarClock } from 'lucide-react';
 import { useTranslations } from 'next-intl';
+
+// Reuse the Agenda type labels for the optional "schedule a task" section.
+const SCHEDULE_TYPE_KEY: Record<TaskType, string> = {
+  call: 'typeCall',
+  meeting: 'typeMeeting',
+  follow_up: 'typeFollowUp',
+  whatsapp: 'typeWhatsapp',
+  other: 'typeOther',
+};
 
 interface ContactFormProps {
   open: boolean;
@@ -48,6 +57,7 @@ export function ContactForm({
 }: ContactFormProps) {
   const t = useTranslations('Contacts.form');
   const tx = useTranslations('XContactsContactForm');
+  const ta = useTranslations('Agenda');
   const supabase = createClient();
   const { accountId } = useAuth();
   const isEdit = !!contact;
@@ -57,6 +67,13 @@ export function ContactForm({
   const [email, setEmail] = useState('');
   const [company, setCompany] = useState('');
   const [saving, setSaving] = useState(false);
+
+  // Optional "schedule a first task" section (new contacts only).
+  const [scheduleOn, setScheduleOn] = useState(false);
+  const [taskTitle, setTaskTitle] = useState('');
+  const [taskType, setTaskType] = useState<TaskType>('follow_up');
+  const [taskDate, setTaskDate] = useState('');
+  const [taskTime, setTaskTime] = useState('09:00');
 
   // Duplicate-phone detection for NEW contacts. `exact` (same digits)
   // hard-blocks the save; a fuzzy trunk-variant match only warns. The
@@ -79,6 +96,13 @@ export function ContactForm({
       setCompany(contact?.company ?? '');
       setSelectedTagIds(contactTags.map((ct) => ct.tag_id));
       setDupMatch(null);
+      setScheduleOn(false);
+      setTaskTitle('');
+      setTaskType('follow_up');
+      const now = new Date();
+      const pad = (n: number) => String(n).padStart(2, '0');
+      setTaskDate(`${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`);
+      setTaskTime('09:00');
       fetchTags();
     }
   }, [open, contact]);
@@ -192,6 +216,24 @@ export function ContactForm({
         for (const tagId of toAdd) {
           await addContactTag(contactId, tagId);
         }
+      }
+
+      // Optional: schedule a first task for a NEW lead. Best-effort —
+      // never undo the contact save if the task insert fails.
+      if (!isEdit && scheduleOn && contactId && taskTitle.trim() && taskDate) {
+        const due_at = new Date(`${taskDate}T${taskTime || '09:00'}`).toISOString();
+        const { error: taskErr } = await supabase.from('tasks').insert({
+          account_id: accountId,
+          created_by: user.id,
+          assigned_to: user.id,
+          contact_id: contactId,
+          title: taskTitle.trim(),
+          type: taskType,
+          priority: 'normal',
+          status: 'pending',
+          due_at,
+        });
+        if (taskErr) toast.error(t('scheduleFailed'));
       }
 
       toast.success(isEdit ? t('toastSuccessEdit') : t('toastSuccessAdd'));
@@ -362,6 +404,69 @@ export function ContactForm({
               </div>
             )}
           </div>
+
+          {/* Optional: schedule a first activity for a NEW lead */}
+          {!isEdit && (
+            <div className="space-y-3 rounded-lg border border-border/60 bg-muted/20 p-3">
+              <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-foreground">
+                <input
+                  type="checkbox"
+                  checked={scheduleOn}
+                  onChange={(e) => setScheduleOn(e.target.checked)}
+                  className="size-4 rounded border-border accent-primary"
+                />
+                <CalendarClock className="size-4 text-primary" />
+                {t('scheduleToggle')}
+              </label>
+              {scheduleOn && (
+                <div className="space-y-3 pt-1">
+                  <div className="space-y-1.5">
+                    <Label className="text-muted-foreground">{t('scheduleTitleLabel')}</Label>
+                    <Input
+                      value={taskTitle}
+                      onChange={(e) => setTaskTitle(e.target.value)}
+                      placeholder={t('scheduleTitlePlaceholder')}
+                      className="bg-muted border-border text-foreground placeholder:text-muted-foreground"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-muted-foreground">{t('scheduleTypeLabel')}</Label>
+                    <select
+                      value={taskType}
+                      onChange={(e) => setTaskType(e.target.value as TaskType)}
+                      className="h-9 w-full rounded-lg border border-border bg-muted px-2.5 text-sm text-foreground outline-none focus:border-primary"
+                    >
+                      {(Object.keys(SCHEDULE_TYPE_KEY) as TaskType[]).map((tp) => (
+                        <option key={tp} value={tp}>
+                          {ta(SCHEDULE_TYPE_KEY[tp])}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-muted-foreground">{t('scheduleDateLabel')}</Label>
+                      <Input
+                        type="date"
+                        value={taskDate}
+                        onChange={(e) => setTaskDate(e.target.value)}
+                        className="bg-muted border-border text-foreground"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-muted-foreground">{t('scheduleTimeLabel')}</Label>
+                      <Input
+                        type="time"
+                        value={taskTime}
+                        onChange={(e) => setTaskTime(e.target.value)}
+                        className="bg-muted border-border text-foreground"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           <DialogFooter className="bg-popover border-border">
             <Button

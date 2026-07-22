@@ -30,9 +30,11 @@ import {
   MessageSquare,
   DollarSign,
   Loader2,
+  CalendarClock,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
+import { TaskForm } from "@/components/agenda/task-form";
 
 interface DealFormProps {
   open: boolean;
@@ -75,6 +77,7 @@ export function DealForm({
   const [statusAction, setStatusAction] = useState<DealStatus | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [taskFormOpen, setTaskFormOpen] = useState(false);
 
   // Reset the form fields every time the sheet opens or its input
   // props change. This is a legitimate prop-driven sync; the rule is
@@ -246,6 +249,7 @@ export function DealForm({
   }
 
   return (
+    <>
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="right"
@@ -426,6 +430,17 @@ export function DealForm({
                 )}
               </div>
             )}
+
+            {deal && (
+              <button
+                type="button"
+                onClick={() => setTaskFormOpen(true)}
+                className="flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm font-medium text-foreground hover:bg-muted"
+              >
+                <CalendarClock className="h-4 w-4 text-primary" />
+                {t("scheduleTask")}
+              </button>
+            )}
           </div>
 
           <div className="border-t border-border/50 bg-popover/80 p-4">
@@ -483,5 +498,14 @@ export function DealForm({
         </div>
       </SheetContent>
     </Sheet>
+    <TaskForm
+      open={taskFormOpen}
+      onOpenChange={setTaskFormOpen}
+      defaultDealId={deal?.id}
+      defaultContactId={deal?.contact_id ?? contactId}
+      defaultConversationId={deal?.conversation_id ?? linkedConversation?.id ?? null}
+      onSaved={() => {}}
+    />
+    </>
   );
 }

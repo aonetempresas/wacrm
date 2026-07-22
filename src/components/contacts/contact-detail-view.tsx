@@ -6,7 +6,7 @@ import { addContactTag, deleteContactTag } from '@/lib/contacts/tag-api';
 import { useAuth } from '@/hooks/use-auth';
 import { formatCurrency } from '@/lib/currency';
 import { toast } from 'sonner';
-import type { Contact, Tag, ContactTag, ContactNote, CustomField, ContactCustomValue, Deal, MessageTemplate } from '@/types';
+import type { Contact, Tag, ContactTag, ContactNote, CustomField, ContactCustomValue, Deal, MessageTemplate, Task } from '@/types';
 import {
   TemplatePicker,
   type TemplateSendValues,
@@ -39,8 +39,18 @@ import {
   X,
   DollarSign,
   LayoutTemplate,
+  CalendarClock,
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
+import { TaskForm } from '@/components/agenda/task-form';
+
+const TASK_TYPE_KEY: Record<string, string> = {
+  call: 'typeCall',
+  meeting: 'typeMeeting',
+  follow_up: 'typeFollowUp',
+  whatsapp: 'typeWhatsapp',
+  other: 'typeOther',
+};
 
 interface ContactDetailViewProps {
   open: boolean;
@@ -57,6 +67,7 @@ export function ContactDetailView({
 }: ContactDetailViewProps) {
   const t = useTranslations('Contacts.detailView');
   const tx = useTranslations('XContactsContactDetailView');
+  const ta = useTranslations('Agenda');
   const supabase = createClient();
   const { accountId, defaultCurrency } = useAuth();
 
@@ -97,6 +108,11 @@ export function ContactDetailView({
   // Deals tab
   const [deals, setDeals] = useState<Deal[]>([]);
   const [loadingDeals, setLoadingDeals] = useState(false);
+
+  // Tasks tab
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [loadingTasks, setLoadingTasks] = useState(false);
+  const [taskFormOpen, setTaskFormOpen] = useState(false);
 
   const fetchContact = useCallback(async () => {
     if (!contactId) return;
@@ -181,6 +197,18 @@ export function ContactDetailView({
     setLoadingDeals(false);
   }, [contactId, supabase]);
 
+  const fetchTasks = useCallback(async () => {
+    if (!contactId) return;
+    setLoadingTasks(true);
+    const { data } = await supabase
+      .from('tasks')
+      .select('*, deal:deals(id,title)')
+      .eq('contact_id', contactId)
+      .order('due_at', { ascending: true });
+    setTasks((data ?? []) as Task[]);
+    setLoadingTasks(false);
+  }, [contactId, supabase]);
+
   useEffect(() => {
     if (open && contactId) {
       fetchContact();
@@ -188,8 +216,9 @@ export function ContactDetailView({
       fetchNotes();
       fetchCustomFields();
       fetchDeals();
+      fetchTasks();
     }
-  }, [open, contactId, fetchContact, fetchTags, fetchNotes, fetchCustomFields, fetchDeals]);
+  }, [open, contactId, fetchContact, fetchTags, fetchNotes, fetchCustomFields, fetchDeals, fetchTasks]);
 
   async function copyPhone() {
     if (!contact) return;
@@ -483,6 +512,12 @@ export function ContactDetailView({
                 >
                   {t('tabs.deals')}
                 </TabsTrigger>
+                <TabsTrigger
+                  value="tasks"
+                  className="data-active:bg-muted data-active:text-primary text-muted-foreground"
+                >
+                  {t('tabs.tasks')}
+                </TabsTrigger>
               </TabsList>
 
               {/* Details Tab */}
@@ -745,6 +780,61 @@ export function ContactDetailView({
                   </div>
                 )}
               </TabsContent>
+
+              {/* Tasks Tab */}
+              <TabsContent value="tasks" className="flex-1 overflow-y-auto px-4 py-3">
+                <div className="mb-3">
+                  <Button
+                    size="sm"
+                    onClick={() => setTaskFormOpen(true)}
+                    className="bg-primary text-primary-foreground hover:bg-primary/90"
+                  >
+                    <CalendarClock className="size-3.5" />
+                    {t('tabs.scheduleTask')}
+                  </Button>
+                </div>
+                {loadingTasks ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="size-5 animate-spin text-primary" />
+                  </div>
+                ) : tasks.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">{t('tabs.noTasks')}</p>
+                ) : (
+                  <div className="space-y-2">
+                    {tasks.map((task) => {
+                      const d = new Date(task.due_at);
+                      const isDone = task.status !== 'pending';
+                      return (
+                        <div
+                          key={task.id}
+                          className="rounded-lg border border-border bg-muted/50 p-3"
+                        >
+                          <p
+                            className={`text-sm font-medium ${
+                              isDone ? 'text-muted-foreground line-through' : 'text-foreground'
+                            }`}
+                          >
+                            {task.title}
+                          </p>
+                          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                            <span>
+                              {d.toLocaleDateString(undefined, { day: '2-digit', month: 'short' })} ·{' '}
+                              {d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                            <span>{ta(TASK_TYPE_KEY[task.type])}</span>
+                            {task.deal?.title && (
+                              <span className="rounded-full bg-primary/10 px-2 py-0.5 text-primary">
+                                {task.deal.title}
+                              </span>
+                            )}
+                            {isDone && <Check className="size-3 text-primary" />}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </TabsContent>
             </Tabs>
           </div>
         )}
@@ -754,6 +844,12 @@ export function ContactDetailView({
       open={templatePickerOpen}
       onOpenChange={setTemplatePickerOpen}
       onSelect={handleSendTemplate}
+    />
+    <TaskForm
+      open={taskFormOpen}
+      onOpenChange={setTaskFormOpen}
+      defaultContactId={contactId}
+      onSaved={fetchTasks}
     />
     </>
   );
