@@ -378,6 +378,44 @@ export interface Deal {
   assignee?: Profile;
 }
 
+// ============================================================
+// Tasks / Agenda (migration 037)
+// ============================================================
+
+export type TaskType = 'call' | 'meeting' | 'follow_up' | 'whatsapp' | 'other';
+export type TaskPriority = 'low' | 'normal' | 'high';
+export type TaskStatus = 'pending' | 'done' | 'cancelled';
+
+export interface Task {
+  id: string;
+  /** Tenancy key — every task belongs to one account. */
+  account_id: string;
+  /** Optional link to the lead. ON DELETE SET NULL. */
+  contact_id?: string | null;
+  /** Optional link to the opportunity. ON DELETE SET NULL. */
+  deal_id?: string | null;
+  /** Reserved for a future inbox shortcut. */
+  conversation_id?: string | null;
+  /** Agent responsible (auth.users.id — resolve name via the members roster). */
+  assigned_to?: string | null;
+  /** Who created it (audit only). */
+  created_by?: string | null;
+  title: string;
+  description?: string | null;
+  type: TaskType;
+  priority: TaskPriority;
+  status: TaskStatus;
+  due_at: string;
+  completed_at?: string | null;
+  /** Guard column for the future reminder cron (unused in Phase 1). */
+  reminded_at?: string | null;
+  created_at: string;
+  updated_at: string;
+  /** Hydrated by embedded selects on the agenda page. */
+  contact?: Contact;
+  deal?: Deal;
+}
+
 export type BroadcastStatus = 'draft' | 'scheduled' | 'sending' | 'sent' | 'failed';
 export type RecipientStatus = 'pending' | 'sent' | 'delivered' | 'read' | 'replied' | 'failed';
 
