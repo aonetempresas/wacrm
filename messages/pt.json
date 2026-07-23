@@ -386,7 +386,35 @@
       "scheduleTypeLabel": "Tipo",
       "scheduleDateLabel": "Data",
       "scheduleTimeLabel": "Hora",
-      "scheduleFailed": "Contato salvo, mas não consegui criar a tarefa."
+      "scheduleFailed": "Contato salvo, mas não consegui criar a tarefa.",
+      "marketIntelToggle": "Inteligência de mercado (opcional)",
+      "cityLabel": "Cidade",
+      "cityPlaceholder": "Cidade do cliente",
+      "operatorLabel": "Operadora atual",
+      "operatorNone": "Selecionar operadora",
+      "currentPriceLabel": "Valor que paga hoje (R$)",
+      "painLabel": "Necessidade / dor",
+      "painNoteLabel": "Observação (opcional)",
+      "painNotePlaceholder": "Detalhe da necessidade..."
+    },
+    "operators": {
+      "vivo": "Vivo",
+      "claro": "Claro",
+      "embratel_vivo": "Embratel / Vivo Empresas",
+      "desktop": "Desktop",
+      "outro_regional": "Outro provedor regional",
+      "nao_possui": "Não possui / primeira contratação"
+    },
+    "pains": {
+      "instabilidade": "Instabilidade / quedas",
+      "sem_suporte_local": "Falta de suporte local",
+      "lentidao": "Lentidão / banda insuficiente",
+      "ip_fixo": "Precisa de IP fixo",
+      "sla_dedicado": "Precisa de SLA / link dedicado",
+      "expansao_filial": "Expansão / nova filial",
+      "preco_alto": "Preço alto do atual",
+      "redundancia": "Redundância / backup",
+      "outro": "Outro"
     },
     "detailView": {
       "tabs": {

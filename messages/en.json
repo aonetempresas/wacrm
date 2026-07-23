@@ -386,7 +386,35 @@
       "scheduleTypeLabel": "Type",
       "scheduleDateLabel": "Date",
       "scheduleTimeLabel": "Time",
-      "scheduleFailed": "Contact saved, but the task could not be created."
+      "scheduleFailed": "Contact saved, but the task could not be created.",
+      "marketIntelToggle": "Market intelligence (optional)",
+      "cityLabel": "City",
+      "cityPlaceholder": "Customer city",
+      "operatorLabel": "Current operator",
+      "operatorNone": "Select operator",
+      "currentPriceLabel": "Currently pays (R$)",
+      "painLabel": "Need / pain",
+      "painNoteLabel": "Note (optional)",
+      "painNotePlaceholder": "Detail the need..."
+    },
+    "operators": {
+      "vivo": "Vivo",
+      "claro": "Claro",
+      "embratel_vivo": "Embratel / Vivo Empresas",
+      "desktop": "Desktop",
+      "outro_regional": "Other regional ISP",
+      "nao_possui": "None / first contract"
+    },
+    "pains": {
+      "instabilidade": "Instability / outages",
+      "sem_suporte_local": "No local support",
+      "lentidao": "Slow / insufficient bandwidth",
+      "ip_fixo": "Needs static IP",
+      "sla_dedicado": "Needs SLA / dedicated link",
+      "expansao_filial": "Expansion / new branch",
+      "preco_alto": "Current price too high",
+      "redundancia": "Redundancy / backup",
+      "outro": "Other"
     },
     "detailView": {
       "tabs": {

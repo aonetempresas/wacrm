@@ -108,6 +108,17 @@ export interface Contact {
   email?: string;
   company?: string;
   avatar_url?: string;
+  // ---- Market intelligence (migration 039, Aonet 4.4) — on the contact ----
+  /** Cidade — coverage / B2G. */
+  city?: string | null;
+  /** Operadora atual — slug from AONET_OPERATORS (L5). */
+  current_operator?: string | null;
+  /** Valor que o cliente paga hoje (R$). */
+  current_monthly_price?: number | null;
+  /** Necessidade/dor — slugs from AONET_PAINS (L7, multi). */
+  pain_points?: string[];
+  /** Free-text detail for the pain (e.g. when "outro" is picked). */
+  pain_note?: string | null;
   created_at: string;
   updated_at: string;
   /** Hydrated by queries that embed `contact_tags(tags(*))` (e.g. the

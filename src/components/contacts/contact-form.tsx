@@ -25,6 +25,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, AlertTriangle, CalendarClock } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { AONET_OPERATORS, AONET_PAINS } from '@/lib/crm/aonet-lists';
 import { useTranslations } from 'next-intl';
 
 // Reuse the Agenda type labels for the optional "schedule a task" section.
@@ -58,6 +60,8 @@ export function ContactForm({
   const t = useTranslations('Contacts.form');
   const tx = useTranslations('XContactsContactForm');
   const ta = useTranslations('Agenda');
+  const tOp = useTranslations('Contacts.operators');
+  const tPain = useTranslations('Contacts.pains');
   const supabase = createClient();
   const { accountId } = useAuth();
   const isEdit = !!contact;
@@ -74,6 +78,14 @@ export function ContactForm({
   const [taskType, setTaskType] = useState<TaskType>('follow_up');
   const [taskDate, setTaskDate] = useState('');
   const [taskTime, setTaskTime] = useState('09:00');
+
+  // Optional "market intelligence" section (create + edit) — 4.4 / 039.
+  const [marketOn, setMarketOn] = useState(false);
+  const [city, setCity] = useState('');
+  const [currentOperator, setCurrentOperator] = useState('');
+  const [currentPrice, setCurrentPrice] = useState('');
+  const [painPoints, setPainPoints] = useState<string[]>([]);
+  const [painNote, setPainNote] = useState('');
 
   // Duplicate-phone detection for NEW contacts. `exact` (same digits)
   // hard-blocks the save; a fuzzy trunk-variant match only warns. The
@@ -94,6 +106,26 @@ export function ContactForm({
       setPhone(contact?.phone ?? '');
       setEmail(contact?.email ?? '');
       setCompany(contact?.company ?? '');
+      setCity(contact?.city ?? '');
+      setCurrentOperator(contact?.current_operator ?? '');
+      setCurrentPrice(
+        contact?.current_monthly_price != null
+          ? String(contact.current_monthly_price)
+          : '',
+      );
+      setPainPoints(contact?.pain_points ?? []);
+      setPainNote(contact?.pain_note ?? '');
+      // Open the section automatically when the contact already carries
+      // any market info, so it's not hidden on edit.
+      setMarketOn(
+        !!(
+          contact?.city ||
+          contact?.current_operator ||
+          contact?.current_monthly_price != null ||
+          contact?.pain_points?.length ||
+          contact?.pain_note
+        ),
+      );
       setSelectedTagIds(contactTags.map((ct) => ct.tag_id));
       setDupMatch(null);
       setScheduleOn(false);
@@ -174,6 +206,15 @@ export function ContactForm({
 
       let contactId = contact?.id;
 
+      // Market-intelligence fields (4.4) — shared by create + edit.
+      const marketFields = {
+        city: city.trim() || null,
+        current_operator: currentOperator || null,
+        current_monthly_price: currentPrice !== '' ? parseFloat(currentPrice) : null,
+        pain_points: painPoints,
+        pain_note: painNote.trim() || null,
+      };
+
       if (isEdit && contactId) {
         const { error } = await supabase
           .from('contacts')
@@ -182,6 +223,7 @@ export function ContactForm({
             phone: phone.trim(),
             email: email.trim() || null,
             company: company.trim() || null,
+            ...marketFields,
             updated_at: new Date().toISOString(),
           })
           .eq('id', contactId);
@@ -196,6 +238,7 @@ export function ContactForm({
             phone: phone.trim(),
             email: email.trim() || null,
             company: company.trim() || null,
+            ...marketFields,
           })
           .select('id')
           .single();
@@ -265,7 +308,7 @@ export function ContactForm({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-popover border-border text-popover-foreground sm:max-w-md">
+      <DialogContent className="bg-popover border-border text-popover-foreground sm:max-w-md max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-popover-foreground">
             {isEdit ? t('editTitle') : t('addTitle')}
@@ -401,6 +444,102 @@ export function ContactForm({
                     </button>
                   );
                 })}
+              </div>
+            )}
+          </div>
+
+          {/* Optional: market intelligence (create + edit) — 4.4 */}
+          <div className="space-y-3 rounded-lg border border-border/60 bg-muted/20 p-3">
+            <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-foreground">
+              <input
+                type="checkbox"
+                checked={marketOn}
+                onChange={(e) => setMarketOn(e.target.checked)}
+                className="size-4 rounded border-border accent-primary"
+              />
+              {t('marketIntelToggle')}
+            </label>
+            {marketOn && (
+              <div className="space-y-3 pt-1">
+                <div className="space-y-1.5">
+                  <Label className="text-muted-foreground">{t('cityLabel')}</Label>
+                  <Input
+                    value={city}
+                    onChange={(e) => setCity(e.target.value)}
+                    placeholder={t('cityPlaceholder')}
+                    className="bg-muted border-border text-foreground placeholder:text-muted-foreground"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-muted-foreground">{t('operatorLabel')}</Label>
+                    <select
+                      value={currentOperator}
+                      onChange={(e) => setCurrentOperator(e.target.value)}
+                      className="h-9 w-full rounded-lg border border-border bg-muted px-2.5 text-sm text-foreground outline-none focus:border-primary"
+                    >
+                      <option value="">{t('operatorNone')}</option>
+                      {AONET_OPERATORS.map((op) => (
+                        <option key={op} value={op}>
+                          {tOp(op)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-muted-foreground">{t('currentPriceLabel')}</Label>
+                    <div className="relative">
+                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground">
+                        R$
+                      </span>
+                      <Input
+                        type="number"
+                        value={currentPrice}
+                        onChange={(e) => setCurrentPrice(e.target.value)}
+                        placeholder="0,00"
+                        className="bg-muted border-border pl-9 text-foreground"
+                      />
+                    </div>
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-muted-foreground">{t('painLabel')}</Label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {AONET_PAINS.map((p) => {
+                      const active = painPoints.includes(p);
+                      return (
+                        <button
+                          key={p}
+                          type="button"
+                          onClick={() =>
+                            setPainPoints((prev) =>
+                              prev.includes(p)
+                                ? prev.filter((x) => x !== p)
+                                : [...prev, p],
+                            )
+                          }
+                          className={cn(
+                            'rounded-full border px-2.5 py-1 text-xs font-medium transition-colors',
+                            active
+                              ? 'border-primary/40 bg-primary/10 text-primary'
+                              : 'border-border bg-muted text-muted-foreground hover:bg-muted/70',
+                          )}
+                        >
+                          {tPain(p)}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-muted-foreground">{t('painNoteLabel')}</Label>
+                  <Input
+                    value={painNote}
+                    onChange={(e) => setPainNote(e.target.value)}
+                    placeholder={t('painNotePlaceholder')}
+                    className="bg-muted border-border text-foreground placeholder:text-muted-foreground"
+                  />
+                </div>
               </div>
             )}
           </div>

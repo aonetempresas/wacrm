@@ -81,3 +81,28 @@ export const AONET_LOSS_REASONS = [
   "projeto_adiado",
   "outro",
 ] as const;
+
+/** Operadora atual do cliente — L5 (single select, inteligência de
+ *  mercado 4.4). Vive no CONTATO, não no negócio. */
+export const AONET_OPERATORS = [
+  "vivo",
+  "claro",
+  "embratel_vivo",
+  "desktop",
+  "outro_regional",
+  "nao_possui",
+] as const;
+
+/** Necessidade / dor do cliente — L7 (MULTI select, correção do
+ *  briefing). Vive no CONTATO. */
+export const AONET_PAINS = [
+  "instabilidade",
+  "sem_suporte_local",
+  "lentidao",
+  "ip_fixo",
+  "sla_dedicado",
+  "expansao_filial",
+  "preco_alto",
+  "redundancia",
+  "outro",
+] as const;
