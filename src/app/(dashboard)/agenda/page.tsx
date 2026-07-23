@@ -6,9 +6,10 @@ import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { useCan } from "@/hooks/use-can";
 import { fetchAccountMembers, memberLabel } from "@/lib/account/members";
-import type { AccountMember, Task, TaskType } from "@/types";
+import type { AccountMember, Deal, Task, TaskType } from "@/types";
 import { isToday, isBefore, startOfToday } from "date-fns";
 import {
+  AlertTriangle,
   CalendarCheck,
   CalendarClock,
   CheckCircle2,
@@ -52,10 +53,11 @@ const PRIORITY_ACCENT: Record<string, string> = {
 
 export default function AgendaPage() {
   const t = useTranslations("Agenda");
-  const { accountId, user, canManageMembers } = useAuth();
+  const { accountId, user, profile, canManageMembers } = useAuth();
   const canManage = useCan("send-messages");
 
   const [tasks, setTasks] = useState<Task[] | null>(null);
+  const [deals, setDeals] = useState<Deal[] | null>(null);
   const [members, setMembers] = useState<AccountMember[]>([]);
   const [error, setError] = useState<string | null>(null);
 
@@ -66,22 +68,38 @@ export default function AgendaPage() {
 
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Task | null>(null);
+  const [scheduleDefaults, setScheduleDefaults] = useState<{
+    contactId?: string;
+    dealId?: string;
+  } | null>(null);
 
   const load = useCallback(async () => {
     if (!accountId) return;
     const supabase = createClient();
-    const { data, error: fetchErr } = await supabase
-      .from("tasks")
-      .select("*, contact:contacts(id,name,phone), deal:deals(id,title)")
-      .eq("account_id", accountId)
-      .order("due_at", { ascending: true })
-      .limit(500);
-    if (fetchErr) {
-      setError(fetchErr.message);
+    // Tasks (the agenda) + open deals (to detect forgotten leads). RLS
+    // scopes both to the account; deals are further limited to `open`.
+    const [tasksRes, dealsRes] = await Promise.all([
+      supabase
+        .from("tasks")
+        .select("*, contact:contacts(id,name,phone), deal:deals(id,title)")
+        .eq("account_id", accountId)
+        .order("due_at", { ascending: true })
+        .limit(500),
+      supabase
+        .from("deals")
+        .select("id,title,contact_id,assigned_to,status,updated_at,created_at, contact:contacts(id,name,phone)")
+        .eq("status", "open")
+        .limit(500),
+    ]);
+    if (tasksRes.error) {
+      setError(tasksRes.error.message);
       return;
     }
     setError(null);
-    setTasks((data ?? []) as Task[]);
+    setTasks((tasksRes.data ?? []) as Task[]);
+    // Partial column select + PostgREST typing the to-one `contact`
+    // embed as an array — cast through unknown (runtime shape is fine).
+    setDeals((dealsRes.data ?? []) as unknown as Deal[]);
   }, [accountId]);
 
   useEffect(() => {
@@ -161,6 +179,40 @@ export default function AgendaPage() {
   const todayDone = today.filter((x) => x.status !== "pending").length;
   const todayPct = today.length ? Math.round((todayDone / today.length) * 100) : 0;
 
+  // "Forgotten leads" (briefing 5): an OPEN deal that hasn't moved in
+  // FORGOTTEN_DAYS and has NO pending task/follow-up on it or its
+  // contact — the lead the consultant is about to let slip. Respects
+  // the Minhas/Todas filter (deals use profiles.id for assigned_to).
+  const FORGOTTEN_DAYS = 7;
+  const forgotten = useMemo(() => {
+    if (!tasks || !deals) return [] as Deal[];
+    const cutoff = startOfToday().getTime() - (FORGOTTEN_DAYS - 1) * 86_400_000;
+    const dealHasTask = new Set<string>();
+    const contactHasTask = new Set<string>();
+    for (const tk of tasks) {
+      if (tk.status !== "pending") continue;
+      if (tk.deal_id) dealHasTask.add(tk.deal_id);
+      if (tk.contact_id) contactHasTask.add(tk.contact_id);
+    }
+    const myProfileId = profile?.id;
+    return deals
+      .filter((d) => {
+        if (!canManageMembers || !viewAll) {
+          if (d.assigned_to !== myProfileId) return false;
+        }
+        const ts = d.updated_at ?? d.created_at;
+        if (!ts || new Date(ts).getTime() > cutoff) return false;
+        if (dealHasTask.has(d.id)) return false;
+        if (d.contact_id && contactHasTask.has(d.contact_id)) return false;
+        return true;
+      })
+      .sort((a, b) => {
+        const ta = new Date(a.updated_at ?? a.created_at).getTime();
+        const tb = new Date(b.updated_at ?? b.created_at).getTime();
+        return ta - tb; // most-forgotten (oldest) first
+      });
+  }, [tasks, deals, viewAll, canManageMembers, profile?.id]);
+
   const toggleDone = useCallback(
     async (task: Task) => {
       const next = task.status === "pending" ? "done" : "pending";
@@ -203,11 +255,56 @@ export default function AgendaPage() {
 
   const openNew = () => {
     setEditing(null);
+    setScheduleDefaults(null);
     setFormOpen(true);
   };
   const openEdit = (task: Task) => {
     setEditing(task);
+    setScheduleDefaults(null);
     setFormOpen(true);
+  };
+  // Schedule a follow-up straight from a forgotten lead — pre-fills the
+  // task with that lead + deal so one click rescues it.
+  const scheduleForLead = (d: Deal) => {
+    setEditing(null);
+    setScheduleDefaults({ contactId: d.contact_id ?? undefined, dealId: d.id });
+    setFormOpen(true);
+  };
+
+  const renderForgotten = (d: Deal) => {
+    const ts = d.updated_at ?? d.created_at;
+    const days = Math.floor((startOfToday().getTime() - new Date(ts).getTime()) / 86_400_000);
+    const label = d.contact?.name || d.contact?.phone || d.title;
+    return (
+      <li
+        key={d.id}
+        className="flex items-center gap-3 rounded-xl border border-l-[3px] border-l-amber-500/70 bg-amber-500/5 p-3 sm:p-3.5"
+      >
+        <AlertTriangle className="h-5 w-5 flex-shrink-0 text-amber-500" />
+        <div className="min-w-0 flex-1">
+          <span className="block truncate text-sm font-semibold text-foreground">{label}</span>
+          <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+            <span className="inline-flex items-center gap-1 font-medium text-amber-600 dark:text-amber-400">
+              <Clock className="h-3 w-3" /> {t("forgottenDays", { days })}
+            </span>
+            {d.title ? (
+              <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-primary">
+                {d.title}
+              </span>
+            ) : null}
+          </div>
+        </div>
+        {canManage && (
+          <button
+            type="button"
+            onClick={() => scheduleForLead(d)}
+            className="flex h-8 flex-shrink-0 items-center gap-1 rounded-md px-2 text-xs font-medium text-primary hover:bg-primary/10"
+          >
+            <Plus className="h-3.5 w-3.5" /> {t("forgottenSchedule")}
+          </button>
+        )}
+      </li>
+    );
   };
 
   const renderTask = (task: Task, bucket: Bucket) => {
@@ -355,7 +452,8 @@ export default function AgendaPage() {
     );
   }
 
-  const nothing = overdue.length + today.length + upcoming.length + doneArchive.length === 0;
+  const nothing =
+    overdue.length + today.length + upcoming.length + doneArchive.length + forgotten.length === 0;
 
   return (
     <div className="space-y-5">
@@ -383,6 +481,17 @@ export default function AgendaPage() {
             {overdue.length}
           </span>
           <span className="text-xs text-muted-foreground">{t("sectionOverdue")}</span>
+        </div>
+        <div
+          className={cn(
+            "flex items-center gap-2 rounded-lg border px-3 py-1.5",
+            forgotten.length > 0 ? "border-amber-500/30 bg-amber-500/5" : "border-border bg-card",
+          )}
+        >
+          <span className={cn("text-lg font-bold leading-none", forgotten.length > 0 ? "text-amber-500" : "text-foreground")}>
+            {forgotten.length}
+          </span>
+          <span className="text-xs text-muted-foreground">{t("sectionForgotten")}</span>
         </div>
         <div className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-1.5">
           <span className="text-lg font-bold leading-none text-foreground">{today.length}</span>
@@ -449,6 +558,21 @@ export default function AgendaPage() {
         </div>
       ) : (
         <div className="space-y-6">
+          {/* Forgotten leads — rescue before they go cold */}
+          {forgotten.length > 0 && (
+            <section>
+              <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold text-amber-600 dark:text-amber-400">
+                <AlertTriangle className="h-4 w-4" />
+                {t("sectionForgotten")}
+                <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-medium">
+                  {forgotten.length}
+                </span>
+                <span className="text-xs font-normal text-muted-foreground">· {t("forgottenHint")}</span>
+              </h2>
+              <ul className="space-y-2">{forgotten.map((d) => renderForgotten(d))}</ul>
+            </section>
+          )}
+
           {/* Overdue — resolve first */}
           {overdue.length > 0 && (
             <section>
@@ -529,7 +653,14 @@ export default function AgendaPage() {
         </div>
       )}
 
-      <TaskForm open={formOpen} onOpenChange={setFormOpen} task={editing} onSaved={load} />
+      <TaskForm
+        open={formOpen}
+        onOpenChange={setFormOpen}
+        task={editing}
+        defaultContactId={scheduleDefaults?.contactId}
+        defaultDealId={scheduleDefaults?.dealId}
+        onSaved={load}
+      />
     </div>
   );
 }
