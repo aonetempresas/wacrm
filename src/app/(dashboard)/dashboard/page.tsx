@@ -16,6 +16,7 @@ import {
   loadConversationsSeries,
   loadMetrics,
   loadPipelineDonut,
+  loadRepPerformance,
   loadResponseTime,
 } from '@/lib/dashboard/queries'
 import type {
@@ -23,6 +24,7 @@ import type {
   ConversationsSeriesPoint,
   MetricsBundle,
   PipelineDonutData,
+  RepPerformanceRow,
   ResponseTimeSummary,
 } from '@/lib/dashboard/types'
 
@@ -33,6 +35,7 @@ import { ConversationsChart } from '@/components/dashboard/conversations-chart'
 import { PipelineDonut } from '@/components/dashboard/pipeline-donut'
 import { ResponseTimeChart } from '@/components/dashboard/response-time-chart'
 import { ActivityFeed } from '@/components/dashboard/activity-feed'
+import { RepPerformance } from '@/components/dashboard/rep-performance'
 
 import { useTranslations } from 'next-intl'
 
@@ -40,7 +43,7 @@ type RangeDays = 7 | 30 | 90
 
 export default function DashboardPage() {
   const t = useTranslations('Dashboard.page')
-  const { defaultCurrency } = useAuth()
+  const { defaultCurrency, canManageMembers } = useAuth()
   const [metrics, setMetrics] = useState<MetricsBundle | null>(null)
   const [metricsLoading, setMetricsLoading] = useState(true)
 
@@ -63,6 +66,9 @@ export default function DashboardPage() {
 
   const [activity, setActivity] = useState<ActivityItem[] | null>(null)
   const [activityLoading, setActivityLoading] = useState(true)
+
+  const [repPerf, setRepPerf] = useState<RepPerformanceRow[] | null>(null)
+  const [repPerfLoading, setRepPerfLoading] = useState(true)
 
   const loadAll = useCallback(() => {
     const db = createClient()
@@ -97,6 +103,11 @@ export default function DashboardPage() {
       .then((a) => setActivity(a))
       .catch((err) => console.error('[dashboard] activity failed:', err))
       .finally(() => setActivityLoading(false))
+
+    void loadRepPerformance(db)
+      .then((r) => setRepPerf(r))
+      .catch((err) => console.error('[dashboard] rep performance failed:', err))
+      .finally(() => setRepPerfLoading(false))
   }, [])
 
   useEffect(() => {
@@ -215,6 +226,11 @@ export default function DashboardPage() {
           />
         </div>
       </div>
+
+      {/* Per-salesperson performance — management view (admins+) */}
+      {canManageMembers && (
+        <RepPerformance rows={repPerf} loading={repPerfLoading} />
+      )}
 
       {/* Response time */}
       <ResponseTimeChart data={responseTime} loading={responseTimeLoading} />

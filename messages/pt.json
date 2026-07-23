@@ -103,6 +103,19 @@
       "timeH": "há {hr}h",
       "timeD": "há {day}d"
     },
+    "repPerformance": {
+      "title": "Desempenho por consultor",
+      "subtitle": "Este mês",
+      "empty": "Sem dados ainda",
+      "emptyHint": "Os números aparecem conforme os negócios são ganhos ou perdidos.",
+      "colRep": "Consultor",
+      "colWon": "Ganhos",
+      "colWonValue": "R$ ganho",
+      "colTicket": "Ticket médio",
+      "colCloseRate": "Fechamento",
+      "colPipeline": "Em negociação",
+      "unassigned": "Não atribuído"
+    },
     "conversationsChart": {
       "title": "Conversas ao longo do tempo",
       "description": "Volume diário de mensagens por direção",
@@ -380,7 +393,7 @@
         "details": "Detalhes",
         "activity": "Atividade",
         "notes": "Notas",
-        "custom": "Campos personalizados",
+        "custom": "Campos",
         "deals": "Negócios",
         "tags": "Tags",
         "noTags": "Nenhuma tag",

@@ -13,6 +13,7 @@ import type {
   MetricsBundle,
   PipelineDonutData,
   PipelineStageSlice,
+  RepPerformanceRow,
   ResponseTimeBucket,
   ResponseTimeSummary,
 } from './types'
@@ -395,4 +396,95 @@ export async function loadActivity(db: DB, limit = 20): Promise<ActivityItem[]> 
   return items
     .sort((a, b) => (a.at > b.at ? -1 : a.at < b.at ? 1 : 0))
     .slice(0, limit)
+}
+
+// --- 6. Per-salesperson performance (this month) -----------------------
+
+export async function loadRepPerformance(db: DB): Promise<RepPerformanceRow[]> {
+  // Pull deals + the member roster in parallel, then aggregate per
+  // assignee client-side (same approach as the other widgets). RLS
+  // already scopes both to the caller's account.
+  const [dealsRes, profilesRes] = await Promise.all([
+    db.from('deals').select('assigned_to, value, status, updated_at, created_at'),
+    db.from('profiles').select('id, full_name, email'),
+  ])
+
+  const deals = (dealsRes.data ?? []) as {
+    assigned_to: string | null
+    value: number | null
+    status: string | null
+    updated_at: string | null
+    created_at: string | null
+  }[]
+  const profiles = (profilesRes.data ?? []) as {
+    id: string
+    full_name: string | null
+    email: string | null
+  }[]
+  const nameById = new Map(
+    profiles.map((p) => [p.id, p.full_name || p.email || p.id]),
+  )
+
+  const now = new Date()
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+  const closedThisMonth = (d: (typeof deals)[number]) => {
+    const ts = d.updated_at ?? d.created_at
+    return ts ? new Date(ts) >= monthStart : false
+  }
+
+  interface Acc {
+    wonCount: number
+    wonValue: number
+    lostCount: number
+    openValue: number
+    openCount: number
+  }
+  const byRep = new Map<string | null, Acc>()
+  const bump = (key: string | null): Acc => {
+    let a = byRep.get(key)
+    if (!a) {
+      a = { wonCount: 0, wonValue: 0, lostCount: 0, openValue: 0, openCount: 0 }
+      byRep.set(key, a)
+    }
+    return a
+  }
+
+  for (const d of deals) {
+    const key = d.assigned_to ?? null
+    const val = Number(d.value ?? 0)
+    if (d.status === 'open') {
+      const a = bump(key)
+      a.openValue += val
+      a.openCount += 1
+    } else if (d.status === 'won' && closedThisMonth(d)) {
+      const a = bump(key)
+      a.wonCount += 1
+      a.wonValue += val
+    } else if (d.status === 'lost' && closedThisMonth(d)) {
+      const a = bump(key)
+      a.lostCount += 1
+    }
+  }
+
+  const rows: RepPerformanceRow[] = Array.from(byRep.entries()).map(
+    ([userId, a]) => {
+      const closed = a.wonCount + a.lostCount
+      return {
+        userId,
+        // null name resolved by the component (it holds the i18n string).
+        name: userId ? (nameById.get(userId) ?? userId) : '',
+        wonCount: a.wonCount,
+        wonValue: a.wonValue,
+        lostCount: a.lostCount,
+        ticket: a.wonCount > 0 ? a.wonValue / a.wonCount : 0,
+        closeRate: closed > 0 ? a.wonCount / closed : null,
+        openValue: a.openValue,
+        openCount: a.openCount,
+      }
+    },
+  )
+
+  // Most valuable first: this month's won value, then open pipeline.
+  rows.sort((a, b) => b.wonValue - a.wonValue || b.openValue - a.openValue)
+  return rows
 }

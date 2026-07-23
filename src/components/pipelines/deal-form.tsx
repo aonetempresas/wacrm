@@ -320,7 +320,7 @@ export function DealForm({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="right"
-        className="bg-popover border-border text-popover-foreground sm:max-w-lg w-full p-0"
+        className="bg-popover border-border text-popover-foreground w-full data-[side=right]:sm:max-w-lg p-0"
       >
         <div className="flex h-full flex-col">
           <SheetHeader className="border-b border-border/50 p-4">
@@ -329,7 +329,7 @@ export function DealForm({
             </SheetTitle>
           </SheetHeader>
 
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-4">
             <div className="grid gap-2">
               <Label className="text-muted-foreground">{t("contact")}</Label>
               <select

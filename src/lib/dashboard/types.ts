@@ -48,6 +48,27 @@ export interface ResponseTimeSummary {
   lastWeekAvg: number | null
 }
 
+/**
+ * One salesperson's numbers for the current month (Aonet briefing 6.1).
+ * `closeRate` is won ÷ (won + lost) — a clean, computable "taxa de
+ * fechamento". The briefing's stricter conversion (stage 4 ÷ all leads
+ * that entered) waits until we track funnel entry.
+ */
+export interface RepPerformanceRow {
+  /** profiles.id, or null for the "unassigned" bucket. */
+  userId: string | null
+  name: string
+  wonCount: number
+  wonValue: number
+  lostCount: number
+  /** wonValue ÷ wonCount, 0 when no wins yet. */
+  ticket: number
+  /** won ÷ (won + lost); null when nothing closed this month. */
+  closeRate: number | null
+  openValue: number
+  openCount: number
+}
+
 export type ActivityKind =
   | 'message'
   | 'deal'

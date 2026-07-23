@@ -103,6 +103,19 @@
       "timeH": "{hr}h ago",
       "timeD": "{day}d ago"
     },
+    "repPerformance": {
+      "title": "Performance by consultant",
+      "subtitle": "This month",
+      "empty": "No data yet",
+      "emptyHint": "Numbers show up as deals are won or lost.",
+      "colRep": "Consultant",
+      "colWon": "Won",
+      "colWonValue": "Won value",
+      "colTicket": "Avg ticket",
+      "colCloseRate": "Close rate",
+      "colPipeline": "In negotiation",
+      "unassigned": "Unassigned"
+    },
     "conversationsChart": {
       "title": "Conversations Over Time",
       "description": "Daily message volume by direction",
@@ -380,7 +393,7 @@
         "details": "Details",
         "activity": "Activity",
         "notes": "Notes",
-        "custom": "Custom Fields",
+        "custom": "Custom",
         "deals": "Deals",
         "tags": "Tags",
         "noTags": "No tags",
