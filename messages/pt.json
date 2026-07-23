@@ -564,7 +564,29 @@
       "toastPipelineCreated": "Funil criado",
       "toastNotLinkedToAccount": "Seu perfil não está vinculado a uma conta.",
       "gateCreatePipelines": "criar funis",
-      "gateCreateDeals": "criar negócios"
+      "gateCreateDeals": "criar negócios",
+      "viewFunnel": "Funil",
+      "viewWon": "Ganhos",
+      "viewLost": "Perdidos"
+    },
+    "closedFilter": {
+      "from": "De",
+      "to": "Até",
+      "clear": "Limpar"
+    },
+    "won": {
+      "total": "{count} ganhos · {value}",
+      "subtitle": "Negócios fechados no período",
+      "empty": "Nenhum ganho no período",
+      "emptyHint": "Os negócios marcados como Ganho aparecem aqui.",
+      "closedOn": "Fechado em {date}"
+    },
+    "lost": {
+      "total": "{count} perdidos · {value}",
+      "subtitle": "Negócios perdidos no período",
+      "empty": "Nenhuma perda no período",
+      "emptyHint": "Os negócios marcados como Perdido aparecem aqui.",
+      "closedOn": "Perdido em {date}"
     },
     "board": {
       "dropDealHere": "Solte um negócio aqui",

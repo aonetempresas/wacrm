@@ -7,6 +7,8 @@ import { PipelineBoard } from "@/components/pipelines/pipeline-board";
 import { PipelineSettings } from "@/components/pipelines/pipeline-settings";
 import { DealForm } from "@/components/pipelines/deal-form";
 import { PipelineAnalytics } from "@/components/pipelines/pipeline-analytics";
+import { ClosedDealsView } from "@/components/pipelines/closed-deals-view";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -69,6 +71,8 @@ export default function PipelinesPage() {
   const [dealFormOpen, setDealFormOpen] = useState(false);
   const [editingDeal, setEditingDeal] = useState<Deal | null>(null);
   const [defaultStageId, setDefaultStageId] = useState<string>("");
+  // Funil (open) · Ganhos (won) · Perdidos (lost) view.
+  const [view, setView] = useState<"funil" | "ganhos" | "perdidos">("funil");
 
   // Guard against double-seeding (React StrictMode double-effect in dev).
   const seedAttempted = useRef(false);
@@ -297,6 +301,12 @@ export default function PipelinesPage() {
 
   const selectedPipeline = pipelines.find((p) => p.id === selectedPipelineId);
 
+  // The board shows only active (open) deals; won deals move to the
+  // Ganhos view. Lost deals leave the board entirely.
+  const openDeals = deals.filter((d) => d.status !== "won" && d.status !== "lost");
+  const wonDeals = deals.filter((d) => d.status === "won");
+  const lostDeals = deals.filter((d) => d.status === "lost");
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -412,14 +422,47 @@ export default function PipelinesPage() {
         </div>
       ) : (
         <>
-          <PipelineAnalytics stages={stages} deals={deals} />
-          <PipelineBoard
-            stages={stages}
-            deals={deals}
-            onDealMoved={handleDealMoved}
-            onAddDeal={handleAddDeal}
-            onEditDeal={handleEditDeal}
-          />
+          {/* Funil (em aberto) · Ganhos · Perdidos */}
+          <div className="inline-flex rounded-lg border border-border p-0.5">
+            {(
+              [
+                ["funil", t("viewFunnel")],
+                ["ganhos", t("viewWon")],
+                ["perdidos", t("viewLost")],
+              ] as const
+            ).map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setView(key)}
+                className={cn(
+                  "rounded-md px-3 py-1 text-sm font-medium transition-colors",
+                  view === key
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {view === "funil" ? (
+            <>
+              <PipelineAnalytics stages={stages} deals={deals} />
+              <PipelineBoard
+                stages={stages}
+                deals={openDeals}
+                onDealMoved={handleDealMoved}
+                onAddDeal={handleAddDeal}
+                onEditDeal={handleEditDeal}
+              />
+            </>
+          ) : view === "ganhos" ? (
+            <ClosedDealsView mode="won" deals={wonDeals} onEditDeal={handleEditDeal} />
+          ) : (
+            <ClosedDealsView mode="lost" deals={lostDeals} onEditDeal={handleEditDeal} />
+          )}
         </>
       )}
 

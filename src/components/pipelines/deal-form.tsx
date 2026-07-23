@@ -256,9 +256,21 @@ export function DealForm({
   async function handleStatusChange(status: DealStatus) {
     if (!deal) return;
     setStatusAction(status);
+    // Stamp when a deal is won (cleared on reopen) so the Ganhos view /
+    // monthly results have a real close date.
+    const now = new Date().toISOString();
+    const patch: { status: DealStatus; won_at?: string | null; lost_at?: string | null } =
+      { status };
+    if (status === "won") {
+      patch.won_at = now;
+      patch.lost_at = null;
+    } else if (status === "open") {
+      patch.won_at = null;
+      patch.lost_at = null;
+    }
     const { error } = await supabase
       .from("deals")
-      .update({ status })
+      .update(patch)
       .eq("id", deal.id);
     setStatusAction(null);
     if (error) {
@@ -286,6 +298,8 @@ export function DealForm({
       .from("deals")
       .update({
         status: "lost",
+        lost_at: new Date().toISOString(),
+        won_at: null,
         lost_reasons: lostReasons,
         lost_reason_note: lostReasonNote.trim() || null,
       })

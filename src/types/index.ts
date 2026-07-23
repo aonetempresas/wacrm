@@ -401,6 +401,10 @@ export interface Deal {
   lost_reasons?: string[];
   /** Free-text detail for the loss (e.g. when "outro" is picked). */
   lost_reason_note?: string | null;
+  /** When the deal was marked won / lost (migration 040). Powers the
+   *  Ganhos view's date filter and the monthly results. */
+  won_at?: string | null;
+  lost_at?: string | null;
   created_at: string;
   updated_at?: string;
   contact?: Contact;

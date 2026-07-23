@@ -564,7 +564,29 @@
       "toastPipelineCreated": "Pipeline created",
       "toastNotLinkedToAccount": "Your profile is not linked to an account.",
       "gateCreatePipelines": "create pipelines",
-      "gateCreateDeals": "create deals"
+      "gateCreateDeals": "create deals",
+      "viewFunnel": "Funnel",
+      "viewWon": "Won",
+      "viewLost": "Lost"
+    },
+    "closedFilter": {
+      "from": "From",
+      "to": "To",
+      "clear": "Clear"
+    },
+    "won": {
+      "total": "{count} won · {value}",
+      "subtitle": "Deals closed in the period",
+      "empty": "No wins in the period",
+      "emptyHint": "Deals marked as Won show up here.",
+      "closedOn": "Closed on {date}"
+    },
+    "lost": {
+      "total": "{count} lost · {value}",
+      "subtitle": "Deals lost in the period",
+      "empty": "No losses in the period",
+      "emptyHint": "Deals marked as Lost show up here.",
+      "closedOn": "Lost on {date}"
     },
     "board": {
       "dropDealHere": "Drop a deal here",
