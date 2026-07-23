@@ -24,7 +24,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, AlertTriangle, CalendarClock } from 'lucide-react';
+import { Loader2, AlertTriangle, CalendarClock, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AONET_OPERATORS, AONET_PAINS } from '@/lib/crm/aonet-lists';
 import { useTranslations } from 'next-intl';
@@ -308,7 +308,7 @@ export function ContactForm({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-popover border-border text-popover-foreground sm:max-w-md max-h-[85vh] overflow-y-auto">
+      <DialogContent className="bg-popover border-border text-popover-foreground sm:max-w-md max-h-[85vh] overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border">
         <DialogHeader>
           <DialogTitle className="text-popover-foreground">
             {isEdit ? t('editTitle') : t('addTitle')}
@@ -450,15 +450,19 @@ export function ContactForm({
 
           {/* Optional: market intelligence (create + edit) — 4.4 */}
           <div className="space-y-3 rounded-lg border border-border/60 bg-muted/20 p-3">
-            <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-foreground">
-              <input
-                type="checkbox"
-                checked={marketOn}
-                onChange={(e) => setMarketOn(e.target.checked)}
-                className="size-4 rounded border-border accent-primary"
+            <button
+              type="button"
+              onClick={() => setMarketOn((v) => !v)}
+              className="flex w-full cursor-pointer items-center gap-2 text-left text-sm font-medium text-foreground"
+            >
+              <ChevronDown
+                className={cn(
+                  'size-4 shrink-0 text-muted-foreground transition-transform',
+                  !marketOn && '-rotate-90',
+                )}
               />
               {t('marketIntelToggle')}
-            </label>
+            </button>
             {marketOn && (
               <div className="space-y-3 pt-1">
                 <div className="space-y-1.5">
@@ -547,16 +551,20 @@ export function ContactForm({
           {/* Optional: schedule a first activity for a NEW lead */}
           {!isEdit && (
             <div className="space-y-3 rounded-lg border border-border/60 bg-muted/20 p-3">
-              <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-foreground">
-                <input
-                  type="checkbox"
-                  checked={scheduleOn}
-                  onChange={(e) => setScheduleOn(e.target.checked)}
-                  className="size-4 rounded border-border accent-primary"
+              <button
+                type="button"
+                onClick={() => setScheduleOn((v) => !v)}
+                className="flex w-full cursor-pointer items-center gap-2 text-left text-sm font-medium text-foreground"
+              >
+                <ChevronDown
+                  className={cn(
+                    'size-4 shrink-0 text-muted-foreground transition-transform',
+                    !scheduleOn && '-rotate-90',
+                  )}
                 />
                 <CalendarClock className="size-4 text-primary" />
                 {t('scheduleToggle')}
-              </label>
+              </button>
               {scheduleOn && (
                 <div className="space-y-3 pt-1">
                   <div className="space-y-1.5">
