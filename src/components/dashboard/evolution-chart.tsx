@@ -94,19 +94,18 @@ function LineSvg({
     maxY === 0 ? PADDING.top + chartH : PADDING.top + chartH - (v / maxY) * chartH
   const xFor = (i: number) => PADDING.left + i * stepX
 
-  const wonPath = points
-    .map((p, i) => `${i === 0 ? 'M' : 'L'}${xFor(i)},${yFor(p.wonValue)}`)
-    .join(' ')
-  const lostPath = points
-    .map((p, i) => `${i === 0 ? 'M' : 'L'}${xFor(i)},${yFor(p.lostValue)}`)
-    .join(' ')
-  // Subtle area fill under the "won" line so the positive trend reads
-  // at a glance (the director's headline number).
+  const baseY = PADDING.top + chartH
+  const wonPts = points.map((p, i) => ({ x: xFor(i), y: yFor(p.wonValue) }))
+  const lostPts = points.map((p, i) => ({ x: xFor(i), y: yFor(p.lostValue) }))
+  // Smooth monotone curves — premium look without overshooting below
+  // the zero baseline (values are never negative).
+  const wonPath = smoothPath(wonPts)
+  const lostPath = smoothPath(lostPts)
+  // Soft gradient area under the "won" curve so the positive trend
+  // reads at a glance (the director's headline).
   const wonArea =
-    points.length > 0
-      ? `${wonPath} L${xFor(points.length - 1)},${PADDING.top + chartH} L${xFor(0)},${
-          PADDING.top + chartH
-        } Z`
+    wonPts.length > 0
+      ? `${wonPath} L${wonPts[wonPts.length - 1].x},${baseY} L${wonPts[0].x},${baseY} Z`
       : ''
 
   // CTM-inverse hover mapping — identical approach to the conversations
@@ -161,6 +160,13 @@ function LineSvg({
         role="img"
         aria-label={t('ariaLabel')}
       >
+        <defs>
+          <linearGradient id="evoWonFill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={WON} stopOpacity={0.22} />
+            <stop offset="100%" stopColor={WON} stopOpacity={0} />
+          </linearGradient>
+        </defs>
+
         {/* Y-axis gridlines + compact currency labels */}
         {ticks.map((tick) => {
           const y = yFor(tick)
@@ -202,25 +208,54 @@ function LineSvg({
           ) : null,
         )}
 
-        {/* Won area + line (green) */}
-        {wonArea && <path d={wonArea} fill={WON} fillOpacity={0.08} stroke="none" />}
+        {/* Won area + curve (green) */}
+        {wonArea && <path d={wonArea} fill="url(#evoWonFill)" stroke="none" />}
         <path
           d={wonPath}
           fill="none"
           stroke={WON}
-          strokeWidth={2}
+          strokeWidth={1.75}
           strokeLinecap="round"
           strokeLinejoin="round"
         />
-        {/* Lost line (red) */}
+        {/* Lost curve (red) */}
         <path
           d={lostPath}
           fill="none"
           stroke={LOST}
-          strokeWidth={2}
+          strokeWidth={1.75}
           strokeLinecap="round"
           strokeLinejoin="round"
         />
+
+        {/* Dots only on days that actually had an event — keeps quiet
+            stretches clean instead of a dot on every zero. */}
+        {points.map((p, i) =>
+          p.wonValue > 0 ? (
+            <circle
+              key={`w-${p.bucket}`}
+              cx={xFor(i)}
+              cy={yFor(p.wonValue)}
+              r={2.5}
+              fill="var(--card)"
+              stroke={WON}
+              strokeWidth={1.75}
+            />
+          ) : null,
+        )}
+        {points.map((p, i) =>
+          p.lostValue > 0 ? (
+            <circle
+              key={`l-${p.bucket}`}
+              cx={xFor(i)}
+              cy={yFor(p.lostValue)}
+              r={2.5}
+              fill="var(--card)"
+              stroke={LOST}
+              strokeWidth={1.75}
+            />
+          ) : null,
+        )}
 
         {/* Hover crosshair */}
         {hover !== null && (
@@ -309,12 +344,66 @@ function tooltipLabel(bucket: string, granularity: 'day' | 'month'): string {
 
 function niceCeil(max: number): number {
   if (max <= 0) return 4
-  const pow = Math.pow(10, Math.floor(Math.log10(max)))
-  const normalised = max / pow
+  // Add ~12% headroom first so the tallest point doesn't touch the top
+  // edge, then round up to a "nice" number. Finer tiers (incl. 2.5/3)
+  // keep the curve filling the box instead of stranding it in the
+  // lower half — the "empty top" that made it look robusto.
+  const target = max * 1.12
+  const pow = Math.pow(10, Math.floor(Math.log10(target)))
+  const normalised = target / pow
   let nice: number
   if (normalised <= 1) nice = 1
+  else if (normalised <= 1.5) nice = 1.5
   else if (normalised <= 2) nice = 2
+  else if (normalised <= 2.5) nice = 2.5
+  else if (normalised <= 3) nice = 3
+  else if (normalised <= 4) nice = 4
   else if (normalised <= 5) nice = 5
+  else if (normalised <= 7.5) nice = 7.5
   else nice = 10
   return nice * pow
+}
+
+/**
+ * Monotone cubic (Fritsch–Carlson) spline as an SVG path. Produces the
+ * smooth premium curve while guaranteeing no overshoot below the zero
+ * baseline — important since won/lost values are never negative and a
+ * naive Catmull-Rom would dip under the axis on sparse spiky data.
+ */
+function smoothPath(pts: { x: number; y: number }[]): string {
+  const n = pts.length
+  if (n === 0) return ''
+  if (n === 1) return `M${pts[0].x},${pts[0].y}`
+  if (n === 2) return `M${pts[0].x},${pts[0].y} L${pts[1].x},${pts[1].y}`
+
+  const dx: number[] = []
+  const slope: number[] = []
+  for (let i = 0; i < n - 1; i++) {
+    dx[i] = pts[i + 1].x - pts[i].x
+    slope[i] = (pts[i + 1].y - pts[i].y) / dx[i]
+  }
+
+  const m: number[] = new Array(n)
+  m[0] = slope[0]
+  m[n - 1] = slope[n - 2]
+  for (let i = 1; i < n - 1; i++) {
+    if (slope[i - 1] * slope[i] <= 0) {
+      m[i] = 0
+    } else {
+      const w1 = 2 * dx[i] + dx[i - 1]
+      const w2 = dx[i] + 2 * dx[i - 1]
+      m[i] = (w1 + w2) / (w1 / slope[i - 1] + w2 / slope[i])
+    }
+  }
+
+  let d = `M${pts[0].x},${pts[0].y}`
+  for (let i = 0; i < n - 1; i++) {
+    const h = dx[i] / 3
+    const c1x = pts[i].x + h
+    const c1y = pts[i].y + h * m[i]
+    const c2x = pts[i + 1].x - h
+    const c2y = pts[i + 1].y - h * m[i + 1]
+    d += ` C${c1x},${c1y} ${c2x},${c2y} ${pts[i + 1].x},${pts[i + 1].y}`
+  }
+  return d
 }
