@@ -165,6 +165,17 @@
       "tooltipOutgoing": "{count} outgoing",
       "ariaLabel": "Conversations per day"
     },
+    "evolutionChart": {
+      "title": "Results Over Time",
+      "description": "Won and lost deals closed across the period",
+      "won": "Won",
+      "lost": "Lost",
+      "empty": "Nothing closed in this period",
+      "emptyHint": "Mark deals as won or lost to see the trend here.",
+      "tooltipWon": "{value} won ({count})",
+      "tooltipLost": "{value} lost ({count})",
+      "ariaLabel": "Won and lost deals over time"
+    },
     "pipelineDonut": {
       "title": "Pipeline Value",
       "description": "Open deals by stage",

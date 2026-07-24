@@ -9,6 +9,7 @@ import { DollarSign, Trophy, TrendingUp, Target } from 'lucide-react'
 import {
   loadActivity,
   loadConversationsSeries,
+  loadEvolution,
   loadPipelineDonut,
   loadRepPerformance,
   loadResponseTime,
@@ -17,6 +18,7 @@ import {
 import type {
   ActivityItem,
   ConversationsSeriesPoint,
+  EvolutionSeries,
   PipelineDonutData,
   RepPerformanceRow,
   ResponseTimeSummary,
@@ -31,6 +33,7 @@ import { PipelineDonut } from '@/components/dashboard/pipeline-donut'
 import { ResponseTimeChart } from '@/components/dashboard/response-time-chart'
 import { ActivityFeed } from '@/components/dashboard/activity-feed'
 import { RepPerformance } from '@/components/dashboard/rep-performance'
+import { EvolutionChart } from '@/components/dashboard/evolution-chart'
 import { LossReasonsPanel, ByChannelPanel } from '@/components/dashboard/results-panels'
 import { PeriodFilter, defaultPeriod, type Period } from '@/components/dashboard/period-filter'
 
@@ -68,6 +71,9 @@ export default function DashboardPage() {
   const [repPerf, setRepPerf] = useState<RepPerformanceRow[] | null>(null)
   const [repPerfLoading, setRepPerfLoading] = useState(true)
 
+  const [evolution, setEvolution] = useState<EvolutionSeries | null>(null)
+  const [evolutionLoading, setEvolutionLoading] = useState(true)
+
   const loadAll = useCallback(() => {
     const db = createClient()
 
@@ -103,6 +109,7 @@ export default function DashboardPage() {
     const db = createClient()
     setResultsLoading(true)
     setRepPerfLoading(true)
+    setEvolutionLoading(true)
     void loadSalesResults(db, p.from, p.to)
       .then((r) => setResults(r))
       .catch((err) => console.error('[dashboard] results failed:', err))
@@ -111,6 +118,10 @@ export default function DashboardPage() {
       .then((r) => setRepPerf(r))
       .catch((err) => console.error('[dashboard] rep performance failed:', err))
       .finally(() => setRepPerfLoading(false))
+    void loadEvolution(db, p.from, p.to)
+      .then((e) => setEvolution(e))
+      .catch((err) => console.error('[dashboard] evolution failed:', err))
+      .finally(() => setEvolutionLoading(false))
   }, [])
 
   useEffect(() => {
@@ -189,6 +200,13 @@ export default function DashboardPage() {
           </>
         )}
       </div>
+
+      {/* Evolução — a tendência de ganhos × perdidos no período */}
+      <EvolutionChart
+        data={evolution}
+        loading={evolutionLoading}
+        currency={defaultCurrency}
+      />
 
       {/* Quick actions */}
       <QuickActions />

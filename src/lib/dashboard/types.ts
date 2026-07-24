@@ -92,6 +92,25 @@ export interface RepPerformanceRow {
   openCount: number
 }
 
+/**
+ * One bucket in the evolution/trend chart (director cockpit).
+ * A bucket is a calendar day (short periods) or a calendar month
+ * (long periods) — the granularity is chosen from the period span.
+ */
+export interface EvolutionPoint {
+  /** Bucket key: "YYYY-MM-DD" (day) or "YYYY-MM" (month). */
+  bucket: string
+  wonValue: number
+  wonCount: number
+  lostValue: number
+  lostCount: number
+}
+
+export interface EvolutionSeries {
+  granularity: 'day' | 'month'
+  points: EvolutionPoint[]
+}
+
 export type ActivityKind =
   | 'message'
   | 'deal'

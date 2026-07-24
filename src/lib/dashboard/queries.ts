@@ -10,6 +10,8 @@ import {
 import type {
   ActivityItem,
   ConversationsSeriesPoint,
+  EvolutionPoint,
+  EvolutionSeries,
   MetricsBundle,
   PipelineDonutData,
   PipelineStageSlice,
@@ -474,6 +476,99 @@ export async function loadSalesResults(
       .map(([channel, c]) => ({ channel, count: c.count, value: c.value }))
       .sort((a, b) => b.value - a.value),
   }
+}
+
+// --- 7b. Evolution / trend over the selected period --------------------
+
+/**
+ * Won vs. lost value over time, for the director's "estou crescendo ou
+ * caindo?" question. Buckets adapt to the period span: day-by-day for
+ * short ranges, month-by-month for long ones (a full year of daily
+ * points is unreadable). Every bucket in range is seeded so quiet
+ * days/months still render a zero point and the line stays continuous.
+ */
+export async function loadEvolution(
+  db: DB,
+  from: string,
+  to: string,
+): Promise<EvolutionSeries> {
+  const { data } = await db
+    .from('deals')
+    .select('value, status, won_at, lost_at')
+
+  const deals = (data ?? []) as {
+    value: number | null
+    status: string | null
+    won_at: string | null
+    lost_at: string | null
+  }[]
+
+  const fromDate = new Date(`${from}T00:00:00`)
+  const toDate = new Date(`${to}T23:59:59`)
+  // Span in whole days (inclusive). Over ~2 months we switch to monthly
+  // buckets so the x-axis never crowds.
+  const spanDays =
+    Math.round((toDate.getTime() - fromDate.getTime()) / 86_400_000) + 1
+  const granularity: 'day' | 'month' = spanDays > 62 ? 'month' : 'day'
+
+  const bucketKey = (d: Date) =>
+    granularity === 'month'
+      ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+      : localDayKey(d)
+
+  // Seed every bucket in the range, in chronological order.
+  const buckets = new Map<string, EvolutionPoint>()
+  if (granularity === 'month') {
+    const cur = new Date(fromDate.getFullYear(), fromDate.getMonth(), 1)
+    const end = new Date(toDate.getFullYear(), toDate.getMonth(), 1)
+    while (cur <= end) {
+      const key = `${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, '0')}`
+      buckets.set(key, { bucket: key, wonValue: 0, wonCount: 0, lostValue: 0, lostCount: 0 })
+      cur.setMonth(cur.getMonth() + 1)
+    }
+  } else {
+    const cur = startOfLocalDay(fromDate)
+    const end = startOfLocalDay(toDate)
+    while (cur <= end) {
+      const key = localDayKey(cur)
+      buckets.set(key, { bucket: key, wonValue: 0, wonCount: 0, lostValue: 0, lostCount: 0 })
+      cur.setDate(cur.getDate() + 1)
+    }
+  }
+
+  const fromTs = fromDate.getTime()
+  const toTs = toDate.getTime()
+  const inRange = (iso: string | null): Date | null => {
+    if (!iso) return null
+    const d = new Date(iso)
+    const ts = d.getTime()
+    return ts >= fromTs && ts <= toTs ? d : null
+  }
+
+  for (const deal of deals) {
+    const v = Number(deal.value ?? 0)
+    if (deal.status === 'won') {
+      const d = inRange(deal.won_at)
+      if (d) {
+        const b = buckets.get(bucketKey(d))
+        if (b) {
+          b.wonValue += v
+          b.wonCount += 1
+        }
+      }
+    } else if (deal.status === 'lost') {
+      const d = inRange(deal.lost_at)
+      if (d) {
+        const b = buckets.get(bucketKey(d))
+        if (b) {
+          b.lostValue += v
+          b.lostCount += 1
+        }
+      }
+    }
+  }
+
+  return { granularity, points: [...buckets.values()] }
 }
 
 // --- 8. Per-salesperson performance (this month) -----------------------

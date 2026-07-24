@@ -8,16 +8,16 @@
 - **Base técnica:** nosso CRM atual (wacrm) — Next.js 16 + Supabase
 - **Briefing original (PDF):** `Briefing CRM - Exemplo + correção/Briefing CRM Aonet Empresas v2 1.docx.pdf` (13 páginas, VP Marcos de Angelo)
 - **Última atualização:** 2026-07-24
-- **Status:** 🚧 Construindo. Feito: Fase A (qualificação), Fase B (por consultor), Funil real + card + Ganhos/Perdidos + topo enxuto + alertas 🔥/⚠️, C1 (Leads esquecidos), Inteligência de mercado no contato, **Etapa 2A do cockpit do diretor** (Painel de resultados: Zona 1 números-chave + Zona 2 por consultor/canal/motivos) + **filtro de período global** + Atividade recente reorganizada. Tudo no GitHub (último commit `d2f6502`).
+- **Status:** 🚧 Construindo. Feito: Fase A (qualificação), Fase B (por consultor), Funil real + card + Ganhos/Perdidos + topo enxuto + alertas 🔥/⚠️, C1 (Leads esquecidos), Inteligência de mercado no contato, **Etapa 2A do cockpit do diretor** (Painel de resultados: Zona 1 números-chave + Zona 2 por consultor/canal/motivos) + **filtro de período global** + Atividade recente reorganizada, e agora o **Gráfico de evolução** (tendência ganhos × perdidos no período, buckets dia/mês adaptativos). Tudo no GitHub.
 
 ### ▶ PRÓXIMO PASSO IMEDIATO (retomar aqui)
 Estamos na **Etapa 2 — Cockpit do diretor**, seguindo esta ordem acordada com o Renan:
-1. **Gráfico de evolução** ← *o próximo a construir* (tendência ao longo do tempo — ganhos/pipeline; deve respeitar o filtro de período global já existente).
-2. Painel de atividade do time (agenda/tarefas/leads esquecidos no Painel).
+1. ~~Gráfico de evolução~~ ✅ **FEITO** (tendência ganhos × perdidos ao longo do tempo, respeitando o filtro de período; buckets por dia em períodos curtos, por mês em períodos longos >62 dias).
+2. **Painel de atividade do time** ← *o próximo a construir* (agenda/tarefas/leads esquecidos no Painel — o que o time está fazendo agora/hoje).
 3. **2B — Metas + projeção + farol** 🟢🟡🔴 (módulo de Metas/MRR — briefing item 11: MRR base×novo, dias úteis, projeção, farol; precisará de migração + tela do gestor inserir meta).
 Depois da Etapa 2, retomar o que foi adiado: C2 (histórico de interações), C3 (lembrete automático), Fase D (Empresas + papéis), Fase F (RLS "cada um vê o seu").
 
-**Detalhes técnicos úteis pra retomar:** filtro de período = `src/components/dashboard/period-filter.tsx` (Period {from,to}); consultas do cockpit em `src/lib/dashboard/queries.ts` (`loadSalesResults`, `loadRepPerformance` recebem from/to; `loadActivity`); Painel em `src/app/(dashboard)/dashboard/page.tsx` (loadAll = período-independente, loadResults = período-dependente). Migrações até `040_deal_close_dates.sql` (won_at/lost_at). Dev: `npm run dev` na 3000; se der zumbi de porta, `taskkill //F //PID`. Validar sempre: tsc + `npm run build` + paridade i18n pt/en (node script) — hoje 1973=1973.
+**Detalhes técnicos úteis pra retomar:** filtro de período = `src/components/dashboard/period-filter.tsx` (Period {from,to}); consultas do cockpit em `src/lib/dashboard/queries.ts` (`loadSalesResults`, `loadRepPerformance`, `loadEvolution` recebem from/to; `loadActivity`); gráfico de evolução = `src/components/dashboard/evolution-chart.tsx` (SVG, 2 linhas won/lost, tipos `EvolutionSeries`/`EvolutionPoint`); Painel em `src/app/(dashboard)/dashboard/page.tsx` (loadAll = período-independente, loadResults = período-dependente, agora inclui evolution). Migrações até `040_deal_close_dates.sql` (won_at/lost_at). Dev: `npm run dev` na 3000; se der zumbi de porta, `taskkill //F //PID`. Validar sempre: tsc + `npm run build` + paridade i18n pt/en (node script) — hoje 1982=1982.
 
 ---
 

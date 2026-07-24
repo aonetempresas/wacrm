@@ -165,6 +165,17 @@
       "tooltipOutgoing": "{count} enviadas",
       "ariaLabel": "Conversas por dia"
     },
+    "evolutionChart": {
+      "title": "Evolução dos resultados",
+      "description": "Ganhos e perdas fechados ao longo do período",
+      "won": "Ganhos",
+      "lost": "Perdidos",
+      "empty": "Nada fechado neste período",
+      "emptyHint": "Marque negócios como ganhos ou perdidos para ver a tendência aqui.",
+      "tooltipWon": "{value} ganhos ({count})",
+      "tooltipLost": "{value} perdidos ({count})",
+      "ariaLabel": "Ganhos e perdas ao longo do tempo"
+    },
     "pipelineDonut": {
       "title": "Valor do funil",
       "description": "Negócios abertos por etapa",
