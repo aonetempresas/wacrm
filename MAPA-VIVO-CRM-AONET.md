@@ -7,8 +7,17 @@
 - **Projeto:** CRM interno de vendas B2B/B2G da **Aonet Empresas** (provedor de internet/telecom)
 - **Base técnica:** nosso CRM atual (wacrm) — Next.js 16 + Supabase
 - **Briefing original (PDF):** `Briefing CRM - Exemplo + correção/Briefing CRM Aonet Empresas v2 1.docx.pdf` (13 páginas, VP Marcos de Angelo)
-- **Última atualização:** 2026-07-22
-- **Status:** 🔍 Discovery concluído · aguardando validação das listas e início da construção
+- **Última atualização:** 2026-07-24
+- **Status:** 🚧 Construindo. Feito: Fase A (qualificação), Fase B (por consultor), Funil real + card + Ganhos/Perdidos + topo enxuto + alertas 🔥/⚠️, C1 (Leads esquecidos), Inteligência de mercado no contato, **Etapa 2A do cockpit do diretor** (Painel de resultados: Zona 1 números-chave + Zona 2 por consultor/canal/motivos) + **filtro de período global** + Atividade recente reorganizada. Tudo no GitHub (último commit `d2f6502`).
+
+### ▶ PRÓXIMO PASSO IMEDIATO (retomar aqui)
+Estamos na **Etapa 2 — Cockpit do diretor**, seguindo esta ordem acordada com o Renan:
+1. **Gráfico de evolução** ← *o próximo a construir* (tendência ao longo do tempo — ganhos/pipeline; deve respeitar o filtro de período global já existente).
+2. Painel de atividade do time (agenda/tarefas/leads esquecidos no Painel).
+3. **2B — Metas + projeção + farol** 🟢🟡🔴 (módulo de Metas/MRR — briefing item 11: MRR base×novo, dias úteis, projeção, farol; precisará de migração + tela do gestor inserir meta).
+Depois da Etapa 2, retomar o que foi adiado: C2 (histórico de interações), C3 (lembrete automático), Fase D (Empresas + papéis), Fase F (RLS "cada um vê o seu").
+
+**Detalhes técnicos úteis pra retomar:** filtro de período = `src/components/dashboard/period-filter.tsx` (Period {from,to}); consultas do cockpit em `src/lib/dashboard/queries.ts` (`loadSalesResults`, `loadRepPerformance` recebem from/to; `loadActivity`); Painel em `src/app/(dashboard)/dashboard/page.tsx` (loadAll = período-independente, loadResults = período-dependente). Migrações até `040_deal_close_dates.sql` (won_at/lost_at). Dev: `npm run dev` na 3000; se der zumbi de porta, `taskkill //F //PID`. Validar sempre: tsc + `npm run build` + paridade i18n pt/en (node script) — hoje 1973=1973.
 
 ---
 
