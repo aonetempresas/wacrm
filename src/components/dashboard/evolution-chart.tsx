@@ -17,7 +17,10 @@ interface EvolutionChartProps {
 
 // Same viewBox strategy as the conversations chart: fixed coordinate
 // space, CSS-scaled. See that component for the CTM-hover rationale.
-const VB_W = 760
+// Height is fixed; width is MEASURED from the container so the drawing
+// fills the full card (no letterboxing on wide screens) and 1 user unit
+// maps to 1px — keeping circles perfectly round.
+const DEFAULT_W = 760
 const VB_H = 240
 const PADDING = { top: 16, right: 16, bottom: 28, left: 52 }
 
@@ -83,10 +86,26 @@ function LineSvg({
 }) {
   const points = data.points
   const [hover, setHover] = useState<{ idx: number; tooltipLeftPx: number } | null>(null)
+  const [vbW, setVbW] = useState(DEFAULT_W)
   const svgRef = useRef<SVGSVGElement>(null)
   const wrapRef = useRef<HTMLDivElement>(null)
 
-  const chartW = VB_W - PADDING.left - PADDING.right
+  // Measure the container so the viewBox width matches the rendered
+  // pixel width (1:1). Fills the whole card and avoids the centred
+  // letterbox that left big empty margins on wide screens.
+  useEffect(() => {
+    const wrap = wrapRef.current
+    if (!wrap) return
+    const ro = new ResizeObserver((entries) => {
+      for (const e of entries) {
+        setVbW(Math.max(320, Math.round(e.contentRect.width)))
+      }
+    })
+    ro.observe(wrap)
+    return () => ro.disconnect()
+  }, [])
+
+  const chartW = vbW - PADDING.left - PADDING.right
   const chartH = VB_H - PADDING.top - PADDING.bottom
 
   const stepX = points.length > 1 ? chartW / (points.length - 1) : 0
@@ -122,7 +141,7 @@ function LineSvg({
       pt.y = e.clientY
       const local = pt.matrixTransform(ctm.inverse())
       const xVb = local.x
-      if (xVb < PADDING.left - 8 || xVb > VB_W - PADDING.right + 8) {
+      if (xVb < PADDING.left - 8 || xVb > vbW - PADDING.right + 8) {
         setHover(null)
         return
       }
@@ -145,7 +164,7 @@ function LineSvg({
       svg.removeEventListener('mousemove', onMove)
       svg.removeEventListener('mouseleave', onLeave)
     }
-  }, [points, stepX])
+  }, [points, stepX, vbW])
 
   const hovered = hover !== null ? points[hover.idx] : null
   const hoverX = hover !== null ? xFor(hover.idx) : 0
@@ -155,7 +174,7 @@ function LineSvg({
     <div ref={wrapRef} className="relative w-full">
       <svg
         ref={svgRef}
-        viewBox={`0 0 ${VB_W} ${VB_H}`}
+        viewBox={`0 0 ${vbW} ${VB_H}`}
         className="h-[240px] w-full"
         role="img"
         aria-label={t('ariaLabel')}
@@ -174,7 +193,7 @@ function LineSvg({
             <g key={tick}>
               <line
                 x1={PADDING.left}
-                x2={VB_W - PADDING.right}
+                x2={vbW - PADDING.right}
                 y1={y}
                 y2={y}
                 stroke="var(--border)"
