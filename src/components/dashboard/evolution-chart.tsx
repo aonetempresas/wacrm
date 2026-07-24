@@ -24,10 +24,11 @@ const DEFAULT_W = 760
 const VB_H = 240
 const PADDING = { top: 16, right: 16, bottom: 28, left: 52 }
 
-const WON = '#16a34a' // green-600 — ganho (positivo)
-// Laranja em vez de vermelho: bem distinto do verde, inclusive para
-// quem confunde vermelho/verde (daltonismo — ~8% dos homens).
-const LOST = '#ea580c' // orange-600 — perda
+// Ganho na cor quente (laranja) porque "salta" mais no fundo claro — é o
+// número que o vendedor quer ver primeiro. Perda no verde (mais sóbrio).
+// Duas cores bem distintas, inclusive para quem confunde vermelho/verde.
+const WON = '#ea580c' // orange-600 — ganho (destaque)
+const LOST = '#16a34a' // green-600 — perda
 
 export function EvolutionChart({ data, loading, currency }: EvolutionChartProps) {
   const t = useTranslations('Dashboard.evolutionChart')
