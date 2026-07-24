@@ -29,10 +29,11 @@ export const TEMPERATURE_STYLE: Record<
   AonetTemperature,
   { dot: string; chip: string; card: string }
 > = {
+  // Vermelho / amarelo / azul (briefing 4.2) — bem distintos entre si.
   quente: {
-    dot: "bg-orange-500",
-    chip: "border-orange-500/40 bg-orange-500/10 text-orange-500",
-    card: "border-orange-500/50 bg-orange-500/5",
+    dot: "bg-red-500",
+    chip: "border-red-500/40 bg-red-500/10 text-red-500",
+    card: "border-red-500/50 bg-red-500/5",
   },
   morno: {
     dot: "bg-amber-400",
@@ -45,6 +46,13 @@ export const TEMPERATURE_STYLE: Record<
     card: "border-blue-500/50 bg-blue-500/5",
   },
 };
+
+/**
+ * Dias sem movimento até um negócio aberto contar como "parado" — usado
+ * tanto no card "Parados" do topo do funil quanto no ⚠️ que pisca no
+ * card do lead. Ajustável num lugar só.
+ */
+export const STUCK_DAYS = 7;
 
 /** Canal de entrada — L1 (single select). */
 export const AONET_CHANNELS = [

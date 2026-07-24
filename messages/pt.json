@@ -596,7 +596,8 @@
       "noContact": "Sem contato",
       "won": "Ganho",
       "lost": "Perdido",
-      "perMonth": "/mês"
+      "perMonth": "/mês",
+      "stuck": "Parado — precisa de atenção"
     },
     "form": {
       "editDeal": "Editar negócio",
@@ -727,6 +728,14 @@
       "wonThisMonthTooltip": "Negócios marcados como Ganho desde o primeiro dia do mês atual.",
       "lostThisMonth": "Perdidos neste mês",
       "lostThisMonthTooltip": "Negócios marcados como Perdido desde o primeiro dia do mês atual.",
+      "openDeals": "Negócios abertos",
+      "openDealsTooltip": "Quantos negócios estão em aberto (em negociação) neste funil.",
+      "inNegotiation": "Em negociação",
+      "inNegotiationTooltip": "Soma do valor dos negócios em aberto — quanto está em jogo agora.",
+      "hot": "Quentes",
+      "hotTooltip": "Negócios em aberto com temperatura Quente — onde focar o esforço.",
+      "stuck": "Parados",
+      "stuckTooltip": "Negócios em aberto sem movimento há 7+ dias — precisam de atenção.",
       "howCalculated": "Como {label} é calculado"
     }
   },

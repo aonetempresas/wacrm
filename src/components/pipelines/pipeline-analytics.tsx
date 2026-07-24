@@ -1,16 +1,8 @@
 "use client";
 
 import { useMemo } from "react";
-import type { Deal, PipelineStage } from "@/types";
-import {
-  DollarSign,
-  TrendingUp,
-  Target,
-  BarChart3,
-  Trophy,
-  XCircle,
-  Info,
-} from "lucide-react";
+import type { Deal } from "@/types";
+import { BarChart3, DollarSign, Flame, Clock, Info } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
@@ -19,123 +11,64 @@ import {
 } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/use-auth";
 import { formatCurrency } from "@/lib/currency";
+import { STUCK_DAYS } from "@/lib/crm/aonet-lists";
 import { useTranslations } from "next-intl";
 
 interface PipelineAnalyticsProps {
-  stages: PipelineStage[];
   deals: Deal[];
 }
 
 /**
- * Weighted pipeline value: value × per-stage probability.
- * First stage ≈ 10%, stages interpolate up to 90% before the final stage,
- * final stage (Won) = 100%. Lost deals excluded.
+ * Funnel top strip — operator-focused glance (Aonet): how many open
+ * deals, how much is in play, where the heat is, and what's stalling.
+ * Manager metrics (conversion, ticket, wins by rep) live on the Painel;
+ * won/lost live in the Ganhos/Perdidos views.
  */
-function computeStageProbability(
-  stage: PipelineStage,
-  sortedStages: PipelineStage[],
-): number {
-  const n = sortedStages.length;
-  if (n <= 1) return 1;
-  const index = sortedStages.findIndex((s) => s.id === stage.id);
-  if (index < 0) return 0;
-  if (index === n - 1) return 1;
-  const slots = n - 1;
-  if (slots <= 1) return 0.1;
-  const t = index / (slots - 1);
-  return 0.1 + t * (0.9 - 0.1);
-}
-
-export function PipelineAnalytics({ stages, deals }: PipelineAnalyticsProps) {
+export function PipelineAnalytics({ deals }: PipelineAnalyticsProps) {
   const t = useTranslations("Pipelines.analytics");
   const { defaultCurrency } = useAuth();
-  const sortedStages = useMemo(
-    () => [...stages].sort((a, b) => a.position - b.position),
-    [stages],
-  );
 
   const stats = useMemo(() => {
-    const active = deals.filter((d) => d.status !== "lost");
-    const openDeals = active.filter((d) => d.status !== "won");
-
-    const totalCount = active.length;
-    const totalValue = active.reduce((sum, d) => sum + Number(d.value || 0), 0);
-    const avgValue = totalCount > 0 ? totalValue / totalCount : 0;
-
-    const stageById = new Map(sortedStages.map((s) => [s.id, s]));
-    const weightedValue = openDeals.reduce((sum, d) => {
-      const stage = stageById.get(d.stage_id);
-      if (!stage) return sum;
-      const prob = computeStageProbability(stage, sortedStages);
-      return sum + Number(d.value || 0) * prob;
-    }, 0);
-
-    const now = new Date();
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const thisMonth = (d: Deal) => {
+    const open = deals.filter((d) => d.status !== "won" && d.status !== "lost");
+    const openValue = open.reduce((sum, d) => sum + Number(d.value || 0), 0);
+    const hot = open.filter((d) => d.temperature === "quente").length;
+    const cutoff = Date.now() - STUCK_DAYS * 86_400_000;
+    const stuck = open.filter((d) => {
       const ts = d.updated_at ?? d.created_at;
-      return ts ? new Date(ts) >= monthStart : false;
-    };
-    const wonThisMonth = deals.filter(
-      (d) => d.status === "won" && thisMonth(d),
-    ).length;
-    const lostThisMonth = deals.filter(
-      (d) => d.status === "lost" && thisMonth(d),
-    ).length;
-
-    return {
-      totalCount,
-      totalValue,
-      avgValue,
-      weightedValue,
-      wonThisMonth,
-      lostThisMonth,
-    };
-  }, [deals, sortedStages]);
+      return ts ? new Date(ts).getTime() < cutoff : false;
+    }).length;
+    return { openCount: open.length, openValue, hot, stuck };
+  }, [deals]);
 
   return (
     <TooltipProvider>
-      <div className="grid grid-cols-2 gap-3 rounded-xl border border-border bg-card/60 p-4 sm:grid-cols-3 xl:grid-cols-6">
+      <div className="grid grid-cols-2 gap-3 rounded-xl border border-border bg-card/60 p-4 sm:grid-cols-4">
         <Metric
           icon={<BarChart3 className="h-4 w-4 text-muted-foreground" />}
-          label={t("totalDeals")}
-          value={String(stats.totalCount)}
-          tooltip={t("totalDealsTooltip")}
+          label={t("openDeals")}
+          value={String(stats.openCount)}
+          tooltip={t("openDealsTooltip")}
           t={t}
         />
         <Metric
           icon={<DollarSign className="h-4 w-4 text-primary" />}
-          label={t("pipelineValue")}
-          value={formatCurrency(stats.totalValue, defaultCurrency)}
-          tooltip={t("pipelineValueTooltip")}
+          label={t("inNegotiation")}
+          value={formatCurrency(stats.openValue, defaultCurrency)}
+          tooltip={t("inNegotiationTooltip")}
           t={t}
         />
         <Metric
-          icon={<Target className="h-4 w-4 text-blue-400" />}
-          label={t("avgDealSize")}
-          value={formatCurrency(stats.avgValue, defaultCurrency)}
-          tooltip={t("avgDealSizeTooltip")}
+          icon={<Flame className="h-4 w-4 text-red-500" />}
+          label={t("hot")}
+          value={String(stats.hot)}
+          tooltip={t("hotTooltip")}
           t={t}
         />
         <Metric
-          icon={<TrendingUp className="h-4 w-4 text-purple-400" />}
-          label={t("weightedValue")}
-          value={formatCurrency(stats.weightedValue, defaultCurrency)}
-          tooltip={t("weightedValueTooltip")}
-          t={t}
-        />
-        <Metric
-          icon={<Trophy className="h-4 w-4 text-primary" />}
-          label={t("wonThisMonth")}
-          value={String(stats.wonThisMonth)}
-          tooltip={t("wonThisMonthTooltip")}
-          t={t}
-        />
-        <Metric
-          icon={<XCircle className="h-4 w-4 text-red-400" />}
-          label={t("lostThisMonth")}
-          value={String(stats.lostThisMonth)}
-          tooltip={t("lostThisMonthTooltip")}
+          icon={<Clock className="h-4 w-4 text-amber-500" />}
+          label={t("stuck")}
+          value={String(stats.stuck)}
+          tooltip={t("stuckTooltip")}
           t={t}
         />
       </div>

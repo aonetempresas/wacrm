@@ -449,7 +449,7 @@ export default function PipelinesPage() {
 
           {view === "funil" ? (
             <>
-              <PipelineAnalytics stages={stages} deals={deals} />
+              <PipelineAnalytics deals={deals} />
               <PipelineBoard
                 stages={stages}
                 deals={openDeals}

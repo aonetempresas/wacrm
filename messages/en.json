@@ -596,7 +596,8 @@
       "noContact": "No contact",
       "won": "Won",
       "lost": "Lost",
-      "perMonth": "/mo"
+      "perMonth": "/mo",
+      "stuck": "Stalled — needs attention"
     },
     "form": {
       "editDeal": "Edit Deal",
@@ -727,6 +728,14 @@
       "wonThisMonthTooltip": "Deals marked as Won since the first day of the current month.",
       "lostThisMonth": "Lost This Month",
       "lostThisMonthTooltip": "Deals marked as Lost since the first day of the current month.",
+      "openDeals": "Open deals",
+      "openDealsTooltip": "How many deals are open (in negotiation) in this funnel.",
+      "inNegotiation": "In negotiation",
+      "inNegotiationTooltip": "Sum of open deal values — how much is in play right now.",
+      "hot": "Hot",
+      "hotTooltip": "Open deals with Hot temperature — where to focus.",
+      "stuck": "Stalled",
+      "stuckTooltip": "Open deals with no movement for 7+ days — need attention.",
       "howCalculated": "How {label} is calculated"
     }
   },

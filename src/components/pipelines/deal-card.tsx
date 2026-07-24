@@ -1,10 +1,14 @@
 "use client";
 
 import type { Deal, PipelineStage } from "@/types";
-import { Calendar, Check, X } from "lucide-react";
+import { Calendar, Check, X, Flame, AlertTriangle } from "lucide-react";
 import { formatCurrency } from "@/lib/currency";
 import { cn } from "@/lib/utils";
-import { TEMPERATURE_STYLE, type AonetTemperature } from "@/lib/crm/aonet-lists";
+import {
+  TEMPERATURE_STYLE,
+  STUCK_DAYS,
+  type AonetTemperature,
+} from "@/lib/crm/aonet-lists";
 import { useTranslations } from "next-intl";
 
 interface DealCardProps {
@@ -43,6 +47,16 @@ export function DealCard({ deal, stage, onEdit, isOverlay }: DealCardProps) {
   const productLabel = deal.products?.length ? tProd(deal.products[0]) : null;
   const assigneeLabel = deal.assignee?.full_name || null;
 
+  // Attention cues (only meaningful on an open deal in the funnel):
+  //  🔥 hot lead → act now;  ⚠️ stalled → nobody worked it in STUCK_DAYS.
+  const isHot = temp === "quente";
+  const isClosed = deal.status === "won" || deal.status === "lost";
+  const lastTouch = deal.updated_at ?? deal.created_at;
+  const isStuck =
+    !isClosed &&
+    !!lastTouch &&
+    Date.now() - new Date(lastTouch).getTime() > STUCK_DAYS * 86_400_000;
+
   return (
     <button
       type="button"
@@ -75,6 +89,18 @@ export function DealCard({ deal, stage, onEdit, isOverlay }: DealCardProps) {
         <h4 className="flex-1 text-sm font-semibold leading-snug text-foreground break-words">
           {primary}
         </h4>
+        {isHot && (
+          <Flame
+            aria-label={tTemp("quente")}
+            className="h-4 w-4 shrink-0 animate-bounce text-red-500"
+          />
+        )}
+        {isStuck && (
+          <AlertTriangle
+            aria-label={t("stuck")}
+            className="h-4 w-4 shrink-0 animate-pulse text-amber-500"
+          />
+        )}
         {deal.status === "won" && (
           <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-semibold text-primary">
             <Check className="h-3 w-3" />
