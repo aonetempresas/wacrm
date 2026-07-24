@@ -9,20 +9,22 @@ import {
   Radio,
   Zap,
   Inbox,
+  ChevronDown,
 } from 'lucide-react'
 import type { ComponentType } from 'react'
 import type { ActivityItem, ActivityKind } from '@/lib/dashboard/types'
 import { cn } from '@/lib/utils'
 import { EmptyState } from './empty-state'
 import { Skeleton } from './skeleton'
+import { useTranslations } from 'next-intl'
 
 interface ActivityFeedProps {
   items: ActivityItem[] | null
   loading: boolean
 }
 
-const PAGE_SIZES = [5, 10, 20, 50] as const
-type PageSize = (typeof PAGE_SIZES)[number]
+// How many recent events to consider — a glance, not a full history.
+const MAX_ITEMS = 20
 
 interface KindTheme {
   icon: ComponentType<{ className?: string }>
@@ -38,34 +40,81 @@ const KIND_THEME: Record<ActivityKind, KindTheme> = {
   automation: { icon: Zap, badge: 'bg-rose-500/10 text-rose-400' },
 }
 
-import { useTranslations } from 'next-intl'
+type T = ReturnType<typeof useTranslations>
+
+function dayKey(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
+    d.getDate(),
+  ).padStart(2, '0')}`
+}
+
+/** Build the (translated) sentence for one activity item. */
+function sentence(it: ActivityItem, t: T): string {
+  const someone = t('someone')
+  switch (it.kind) {
+    case 'message':
+      return t('msgFrom', { who: it.subject || someone })
+    case 'contact':
+      return t('newContact', { name: it.subject || someone })
+    case 'deal':
+      return it.variant === 'stage'
+        ? t('dealInStage', { title: it.subject ?? '', stage: it.context ?? '' })
+        : t('dealUpdated', { title: it.subject ?? '' })
+    case 'broadcast':
+      return it.variant === 'sent'
+        ? t('broadcastSent', { name: it.subject ?? '', count: it.count ?? 0 })
+        : t('broadcastOther', { name: it.subject ?? '' })
+    case 'automation':
+      return it.variant === 'failed'
+        ? t('autoFailed', { name: it.subject || t('anAutomation'), who: it.context || someone })
+        : t('autoTriggered', { name: it.subject || t('anAutomation'), who: it.context || someone })
+    default:
+      return ''
+  }
+}
 
 export function ActivityFeed({ items, loading }: ActivityFeedProps) {
   const t = useTranslations('Dashboard.activityFeed')
-  // Start at 5 — a quick scan of the most recent events without
-  // dominating vertical real estate. User expands explicitly via the
-  // footer control when they want deeper history.
-  const [pageSize, setPageSize] = useState<PageSize>(5)
+  // Each day is a collapsible group. Today starts open; older days start
+  // collapsed — so the list stays short and you expand a day on click.
+  const [openDays, setOpenDays] = useState<Set<string>>(() => new Set([dayKey(new Date())]))
+  const toggle = (key: string) =>
+    setOpenDays((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
 
-  const totalLoaded = items?.length ?? 0
-  const visible = items?.slice(0, pageSize) ?? []
-  // A size option is "useful" if picking it would reveal rows the
-  // smaller option doesn't already show. With PAGE_SIZES=[5,10,20,50]:
-  // "10" is useful only once we've loaded ≥6 items, "20" once ≥11, etc.
-  // The smallest option is always enabled.
-  const isSizeUseful = (size: PageSize, i: number) =>
-    i === 0 || totalLoaded > PAGE_SIZES[i - 1]
+  // Group the recent events by calendar day (items already sorted desc,
+  // so the Map keeps days newest-first).
+  const dayMap = new Map<string, ActivityItem[]>()
+  for (const it of (items ?? []).slice(0, MAX_ITEMS)) {
+    const key = dayKey(new Date(it.at))
+    const arr = dayMap.get(key)
+    if (arr) arr.push(it)
+    else dayMap.set(key, [it])
+  }
+  const dayGroups = [...dayMap.entries()]
+
+  const todayKey = dayKey(new Date())
+  const yd = new Date()
+  yd.setDate(yd.getDate() - 1)
+  const yesterdayKey = dayKey(yd)
+  const dayLabel = (key: string) => {
+    if (key === todayKey) return t('groupToday')
+    if (key === yesterdayKey) return t('groupYesterday')
+    return new Date(`${key}T00:00:00`).toLocaleDateString(undefined, {
+      weekday: 'short',
+      day: '2-digit',
+      month: 'short',
+    })
+  }
 
   return (
     <section className="rounded-xl border border-border bg-card">
-      <header className="flex items-center justify-between border-b border-border px-5 py-4">
+      <header className="border-b border-border px-5 py-4">
         <h2 className="text-sm font-semibold text-foreground">{t('title')}</h2>
-        <Link
-          href="/inbox"
-          className="text-xs font-medium text-primary hover:text-primary/80"
-        >
-          {t('viewAll')}
-        </Link>
       </header>
 
       {loading || !items ? (
@@ -74,90 +123,82 @@ export function ActivityFeed({ items, loading }: ActivityFeedProps) {
             <Skeleton key={i} className="h-10 w-full" />
           ))}
         </div>
-      ) : items.length === 0 ? (
+      ) : dayGroups.length === 0 ? (
         <div className="p-5">
-          <EmptyState
-            icon={Inbox}
-            title={t('noActivity')}
-            hint={t('noActivityHint')}
-          />
+          <EmptyState icon={Inbox} title={t('noActivity')} hint={t('noActivityHint')} />
         </div>
       ) : (
-        <>
-          <ul className="divide-y divide-border">
-            {visible.map((it, i) => {
-              const theme = KIND_THEME[it.kind]
-              const Icon = theme.icon
-              // Alternating row background for scanability. bg-muted/40
-              // keeps the stripe visible in both light and dark modes
-              // (bg-card/40 vanishes against a white card surface in light).
-              const stripe = i % 2 === 0 ? 'bg-transparent' : 'bg-muted/40'
-              const row = (
-                <div className="flex items-center gap-3 px-5 py-2.5">
-                  <span
+        <div className="divide-y divide-border">
+          {dayGroups.map(([key, its]) => {
+            const isOpen = openDays.has(key)
+            return (
+              <div key={key}>
+                <button
+                  type="button"
+                  onClick={() => toggle(key)}
+                  className="flex w-full items-center gap-2 px-5 py-2.5 text-left transition-colors hover:bg-muted/40"
+                >
+                  <ChevronDown
                     className={cn(
-                      'flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full',
-                      theme.badge,
+                      'h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform',
+                      !isOpen && '-rotate-90',
                     )}
-                  >
-                    <Icon className="h-3.5 w-3.5" />
+                  />
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    {dayLabel(key)}
                   </span>
-                  <span className="min-w-0 flex-1 truncate text-sm text-foreground">
-                    {it.text}
+                  <span className="rounded-full bg-muted px-1.5 text-[10px] font-medium text-muted-foreground">
+                    {its.length}
                   </span>
-                  <span className="flex-shrink-0 text-xs text-muted-foreground tabular-nums">
-                    {relativeTime(it.at, t)}
-                  </span>
-                </div>
-              )
-              return (
-                <li key={it.id} className={cn(stripe, 'transition-colors hover:bg-muted/40')}>
-                  {it.href ? (
-                    <Link href={it.href} className="block">
-                      {row}
-                    </Link>
-                  ) : (
-                    row
-                  )}
-                </li>
-              )
-            })}
-          </ul>
-          <footer className="flex items-center justify-between border-t border-border px-5 py-3 text-xs">
-            <span className="text-muted-foreground tabular-nums">
-              {t('showingOf', { visible: visible.length, totalLoaded, plus: totalLoaded === 50 ? '+' : '' })}
-            </span>
-            <div className="flex items-center gap-1">
-              <span className="mr-1 text-muted-foreground">{t('show')}</span>
-              {PAGE_SIZES.map((size, i) => {
-                const disabled = !isSizeUseful(size, i)
-                return (
-                  <button
-                    key={size}
-                    type="button"
-                    onClick={() => setPageSize(size)}
-                    disabled={disabled}
-                    className={cn(
-                      'rounded-md px-2 py-1 font-medium tabular-nums transition-colors',
-                      pageSize === size
-                        ? 'bg-secondary text-secondary-foreground'
-                        : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-                      disabled && 'cursor-not-allowed opacity-40 hover:bg-transparent hover:text-muted-foreground',
-                    )}
-                  >
-                    {size}
-                  </button>
-                )
-              })}
-            </div>
-          </footer>
-        </>
+                </button>
+
+                {isOpen && (
+                  <ul className="pb-1">
+                    {its.map((it) => {
+                      const theme = KIND_THEME[it.kind]
+                      const Icon = theme.icon
+                      const row = (
+                        <div className="flex items-center gap-3 py-2.5 pl-11 pr-5">
+                          <span
+                            className={cn(
+                              'flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full',
+                              theme.badge,
+                            )}
+                          >
+                            <Icon className="h-3.5 w-3.5" />
+                          </span>
+                          <span className="min-w-0 flex-1 truncate text-sm text-foreground">
+                            {sentence(it, t)}
+                          </span>
+                          <span className="flex-shrink-0 text-xs text-muted-foreground tabular-nums">
+                            {relativeTime(it.at, t)}
+                          </span>
+                        </div>
+                      )
+                      return (
+                        <li key={it.id} className="transition-colors hover:bg-muted/40">
+                          {it.href ? (
+                            <Link href={it.href} className="block">
+                              {row}
+                            </Link>
+                          ) : (
+                            row
+                          )}
+                        </li>
+                      )
+                    })}
+                  </ul>
+                )}
+              </div>
+            )
+          })}
+        </div>
       )}
     </section>
   )
 }
 
-function relativeTime(iso: string, t: ReturnType<typeof useTranslations>): string {
+function relativeTime(iso: string, t: T): string {
   const then = new Date(iso).getTime()
   if (Number.isNaN(then)) return ''
   const diffSec = Math.round((Date.now() - then) / 1000)

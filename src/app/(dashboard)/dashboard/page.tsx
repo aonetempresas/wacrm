@@ -32,6 +32,7 @@ import { ResponseTimeChart } from '@/components/dashboard/response-time-chart'
 import { ActivityFeed } from '@/components/dashboard/activity-feed'
 import { RepPerformance } from '@/components/dashboard/rep-performance'
 import { LossReasonsPanel, ByChannelPanel } from '@/components/dashboard/results-panels'
+import { PeriodFilter, defaultPeriod, type Period } from '@/components/dashboard/period-filter'
 
 import { useTranslations } from 'next-intl'
 
@@ -40,6 +41,7 @@ type RangeDays = 7 | 30 | 90
 export default function DashboardPage() {
   const t = useTranslations('Dashboard.page')
   const { defaultCurrency, canManageMembers } = useAuth()
+  const [period, setPeriod] = useState<Period>(defaultPeriod)
   const [results, setResults] = useState<SalesResults | null>(null)
   const [resultsLoading, setResultsLoading] = useState(true)
 
@@ -69,14 +71,8 @@ export default function DashboardPage() {
   const loadAll = useCallback(() => {
     const db = createClient()
 
-    // Kick everything off in parallel. Each block has its own
-    // setState + finally so a slow query doesn't hold up faster
-    // sections — each widget shows its own skeleton independently.
-    void loadSalesResults(db)
-      .then((r) => setResults(r))
-      .catch((err) => console.error('[dashboard] results failed:', err))
-      .finally(() => setResultsLoading(false))
-
+    // Period-independent widgets. Each block has its own setState +
+    // finally so a slow query doesn't hold up faster sections.
     void loadConversationsSeries(db, 30)
       .then((s) => setSeries((prev) => ({ ...prev, 30: s })))
       .catch((err) => console.error('[dashboard] series failed:', err))
@@ -99,8 +95,19 @@ export default function DashboardPage() {
       .then((a) => setActivity(a))
       .catch((err) => console.error('[dashboard] activity failed:', err))
       .finally(() => setActivityLoading(false))
+  }, [])
 
-    void loadRepPerformance(db)
+  // Period-dependent results (Zona 1 + por consultor). Re-runs whenever
+  // the global period changes so the whole cockpit stays in sync.
+  const loadResults = useCallback((p: Period) => {
+    const db = createClient()
+    setResultsLoading(true)
+    setRepPerfLoading(true)
+    void loadSalesResults(db, p.from, p.to)
+      .then((r) => setResults(r))
+      .catch((err) => console.error('[dashboard] results failed:', err))
+      .finally(() => setResultsLoading(false))
+    void loadRepPerformance(db, p.from, p.to)
       .then((r) => setRepPerf(r))
       .catch((err) => console.error('[dashboard] rep performance failed:', err))
       .finally(() => setRepPerfLoading(false))
@@ -109,6 +116,10 @@ export default function DashboardPage() {
   useEffect(() => {
     loadAll()
   }, [loadAll])
+
+  useEffect(() => {
+    loadResults(period)
+  }, [loadResults, period])
 
   // Range switch handler — kept in an event callback (not an effect)
   // so the setState calls stay out of the react-hooks/set-state-in-effect
@@ -130,12 +141,15 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-5">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">{t('title')}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {t('description')}
-        </p>
+      {/* Header + global period filter */}
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">{t('title')}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {t('description')}
+          </p>
+        </div>
+        <PeriodFilter period={period} onChange={setPeriod} />
       </div>
 
       {/* Zona 1 — Resultados (agora) */}

@@ -316,11 +316,10 @@ export async function loadActivity(db: DB, limit = 20): Promise<ActivityItem[]> 
   }>) {
     const conv = Array.isArray(m.conversations) ? m.conversations[0] : m.conversations
     const contact = Array.isArray(conv?.contacts) ? conv?.contacts[0] : conv?.contacts
-    const who = contact?.name || contact?.phone || 'Unknown'
     items.push({
       id: `msg-${m.id}`,
       kind: 'message',
-      text: `New message from ${who}`,
+      subject: contact?.name || contact?.phone || undefined,
       at: m.created_at,
       href: `/inbox?c=${m.conversation_id}`,
     })
@@ -330,7 +329,7 @@ export async function loadActivity(db: DB, limit = 20): Promise<ActivityItem[]> 
     items.push({
       id: `contact-${c.id}`,
       kind: 'contact',
-      text: `New contact: ${c.name || c.phone}`,
+      subject: c.name || c.phone,
       at: c.created_at,
       href: '/contacts',
     })
@@ -346,9 +345,9 @@ export async function loadActivity(db: DB, limit = 20): Promise<ActivityItem[]> 
     items.push({
       id: `deal-${d.id}`,
       kind: 'deal',
-      text: stage?.name
-        ? `Deal "${d.title}" in ${stage.name}`
-        : `Deal "${d.title}" updated`,
+      variant: stage?.name ? 'stage' : 'updated',
+      subject: d.title,
+      context: stage?.name ?? undefined,
       at: d.updated_at,
       href: '/pipelines',
     })
@@ -361,14 +360,12 @@ export async function loadActivity(db: DB, limit = 20): Promise<ActivityItem[]> 
     total_recipients: number
     created_at: string
   }>) {
-    const label =
-      b.status === 'sent'
-        ? `sent to ${b.total_recipients} contacts`
-        : `${b.status} (${b.total_recipients} recipients)`
     items.push({
       id: `broadcast-${b.id}`,
       kind: 'broadcast',
-      text: `Broadcast "${b.name}" ${label}`,
+      variant: b.status === 'sent' ? 'sent' : 'other',
+      subject: b.name,
+      count: b.total_recipients,
       at: b.created_at,
       href: '/broadcasts',
     })
@@ -384,12 +381,12 @@ export async function loadActivity(db: DB, limit = 20): Promise<ActivityItem[]> 
   }>) {
     const automation = Array.isArray(l.automation) ? l.automation[0] : l.automation
     const contact = Array.isArray(l.contact) ? l.contact[0] : l.contact
-    const who = contact?.name || contact?.phone || 'a contact'
-    const autoName = automation?.name || 'Automation'
     items.push({
       id: `auto-${l.id}`,
       kind: 'automation',
-      text: `Automation "${autoName}" ${l.status === 'failed' ? 'failed for' : 'triggered for'} ${who}`,
+      variant: l.status === 'failed' ? 'failed' : 'triggered',
+      subject: automation?.name || undefined,
+      context: contact?.name || contact?.phone || undefined,
       at: l.created_at,
     })
   }
@@ -401,7 +398,11 @@ export async function loadActivity(db: DB, limit = 20): Promise<ActivityItem[]> 
 
 // --- 7. Consolidated sales results (director cockpit, this month) ------
 
-export async function loadSalesResults(db: DB): Promise<SalesResults> {
+export async function loadSalesResults(
+  db: DB,
+  from: string,
+  to: string,
+): Promise<SalesResults> {
   const { data } = await db
     .from('deals')
     .select('value, status, won_at, lost_at, source_channel, lost_reasons')
@@ -415,10 +416,15 @@ export async function loadSalesResults(db: DB): Promise<SalesResults> {
     lost_reasons: string[] | null
   }[]
 
-  const now = new Date()
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime()
-  const inMonth = (iso: string | null) =>
-    !!iso && new Date(iso).getTime() >= monthStart
+  // Closed-in-period filter (won/lost). Open pipeline is always the
+  // current snapshot — it's not "period" data.
+  const fromTs = new Date(`${from}T00:00:00`).getTime()
+  const toTs = new Date(`${to}T23:59:59`).getTime()
+  const inRange = (iso: string | null) => {
+    if (!iso) return false
+    const ts = new Date(iso).getTime()
+    return ts >= fromTs && ts <= toTs
+  }
 
   let openValue = 0
   let openCount = 0
@@ -434,7 +440,7 @@ export async function loadSalesResults(db: DB): Promise<SalesResults> {
     if (d.status === 'open') {
       openValue += v
       openCount += 1
-    } else if (d.status === 'won' && inMonth(d.won_at)) {
+    } else if (d.status === 'won' && inRange(d.won_at)) {
       wonValue += v
       wonCount += 1
       const ch = d.source_channel || '—'
@@ -442,7 +448,7 @@ export async function loadSalesResults(db: DB): Promise<SalesResults> {
       c.count += 1
       c.value += v
       chanMap.set(ch, c)
-    } else if (d.status === 'lost' && inMonth(d.lost_at)) {
+    } else if (d.status === 'lost' && inRange(d.lost_at)) {
       lostValue += v
       lostCount += 1
       for (const r of d.lost_reasons ?? []) {
@@ -472,12 +478,16 @@ export async function loadSalesResults(db: DB): Promise<SalesResults> {
 
 // --- 8. Per-salesperson performance (this month) -----------------------
 
-export async function loadRepPerformance(db: DB): Promise<RepPerformanceRow[]> {
+export async function loadRepPerformance(
+  db: DB,
+  from: string,
+  to: string,
+): Promise<RepPerformanceRow[]> {
   // Pull deals + the member roster in parallel, then aggregate per
   // assignee client-side (same approach as the other widgets). RLS
   // already scopes both to the caller's account.
   const [dealsRes, profilesRes] = await Promise.all([
-    db.from('deals').select('assigned_to, value, status, updated_at, created_at'),
+    db.from('deals').select('assigned_to, value, status, won_at, lost_at'),
     db.from('profiles').select('id, full_name, email'),
   ])
 
@@ -485,8 +495,8 @@ export async function loadRepPerformance(db: DB): Promise<RepPerformanceRow[]> {
     assigned_to: string | null
     value: number | null
     status: string | null
-    updated_at: string | null
-    created_at: string | null
+    won_at: string | null
+    lost_at: string | null
   }[]
   const profiles = (profilesRes.data ?? []) as {
     id: string
@@ -497,11 +507,12 @@ export async function loadRepPerformance(db: DB): Promise<RepPerformanceRow[]> {
     profiles.map((p) => [p.id, p.full_name || p.email || p.id]),
   )
 
-  const now = new Date()
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
-  const closedThisMonth = (d: (typeof deals)[number]) => {
-    const ts = d.updated_at ?? d.created_at
-    return ts ? new Date(ts) >= monthStart : false
+  const fromTs = new Date(`${from}T00:00:00`).getTime()
+  const toTs = new Date(`${to}T23:59:59`).getTime()
+  const inRange = (iso: string | null) => {
+    if (!iso) return false
+    const ts = new Date(iso).getTime()
+    return ts >= fromTs && ts <= toTs
   }
 
   interface Acc {
@@ -528,11 +539,11 @@ export async function loadRepPerformance(db: DB): Promise<RepPerformanceRow[]> {
       const a = bump(key)
       a.openValue += val
       a.openCount += 1
-    } else if (d.status === 'won' && closedThisMonth(d)) {
+    } else if (d.status === 'won' && inRange(d.won_at)) {
       const a = bump(key)
       a.wonCount += 1
       a.wonValue += val
-    } else if (d.status === 'lost' && closedThisMonth(d)) {
+    } else if (d.status === 'lost' && inRange(d.lost_at)) {
       const a = bump(key)
       a.lostCount += 1
     }

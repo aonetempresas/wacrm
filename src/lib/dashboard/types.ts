@@ -102,10 +102,18 @@ export type ActivityKind =
 export interface ActivityItem {
   id: string
   kind: ActivityKind
-  /** Primary line of text rendered in the feed. Pre-formatted. */
-  text: string
   /** ISO timestamp the item happened at, drives relative-time + sort. */
   at: string
   /** Optional deep-link for the whole row (not all items have a target). */
   href?: string
+  // ---- Structured data so the sentence is built (and translated) in
+  //      the component instead of being a pre-formatted English string.
+  /** Named subject (contact/deal/broadcast/automation name, or who). */
+  subject?: string
+  /** Secondary context: stage name, or the person an automation ran for. */
+  context?: string
+  /** Broadcast recipient count. */
+  count?: number
+  /** Sub-variant for kinds with more than one sentence form. */
+  variant?: 'stage' | 'updated' | 'sent' | 'other' | 'failed' | 'triggered'
 }
