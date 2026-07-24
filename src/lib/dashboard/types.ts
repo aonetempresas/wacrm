@@ -49,6 +49,29 @@ export interface ResponseTimeSummary {
 }
 
 /**
+ * Consolidated sales results for the director's cockpit (briefing 6.2).
+ * "This month" = since the 1st of the current month, by won_at/lost_at.
+ */
+export interface SalesResults {
+  /** Open pipeline (deals still in negotiation). */
+  openValue: number
+  openCount: number
+  /** Won / lost this month (value + count). */
+  wonValue: number
+  wonCount: number
+  lostValue: number
+  lostCount: number
+  /** won ÷ (won + lost) this month; null when nothing closed. */
+  conversion: number | null
+  /** wonValue ÷ wonCount; 0 when no wins. */
+  ticket: number
+  /** Loss reasons this month, ranked by count desc. */
+  lossReasons: { reason: string; count: number }[]
+  /** Wins this month grouped by source channel, ranked by value desc. */
+  byChannel: { channel: string; count: number; value: number }[]
+}
+
+/**
  * One salesperson's numbers for the current month (Aonet briefing 6.1).
  * `closeRate` is won ÷ (won + lost) — a clean, computable "taxa de
  * fechamento". The briefing's stricter conversion (stage 4 ÷ all leads

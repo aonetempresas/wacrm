@@ -83,7 +83,24 @@
       "newTodayVsYesterday": "new today vs yesterday",
       "vsYesterday": "vs yesterday",
       "openDeals": "{count} open {count, plural, =1 {deal} other {deals}}",
-      "noChange": "No change {suffix}"
+      "noChange": "No change {suffix}",
+      "inNegotiation": "In negotiation",
+      "wonThisMonth": "Won this month",
+      "wonCount": "{count} {count, plural, =1 {sale} other {sales}}",
+      "conversion": "Conversion",
+      "conversionHint": "won ÷ closed this month",
+      "avgTicket": "Avg ticket",
+      "avgTicketHint": "R$ per sale"
+    },
+    "results": {
+      "thisMonth": "This month",
+      "lossTitle": "Loss reasons",
+      "lossEmpty": "No losses this month",
+      "lossEmptyHint": "Shows up when you mark deals as Lost.",
+      "channelTitle": "Sales by channel",
+      "channelEmpty": "No sales this month",
+      "channelEmptyHint": "Shows up when you mark deals as Won.",
+      "noChannel": "No channel"
     },
     "quickActions": {
       "newContact": "New Contact",

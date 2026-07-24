@@ -4,28 +4,23 @@ import { useCallback, useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/hooks/use-auth'
 import { formatCurrency } from '@/lib/currency'
-import {
-  MessageSquare,
-  UserPlus,
-  DollarSign,
-  Send,
-} from 'lucide-react'
+import { DollarSign, Trophy, TrendingUp, Target } from 'lucide-react'
 
 import {
   loadActivity,
   loadConversationsSeries,
-  loadMetrics,
   loadPipelineDonut,
   loadRepPerformance,
   loadResponseTime,
+  loadSalesResults,
 } from '@/lib/dashboard/queries'
 import type {
   ActivityItem,
   ConversationsSeriesPoint,
-  MetricsBundle,
   PipelineDonutData,
   RepPerformanceRow,
   ResponseTimeSummary,
+  SalesResults,
 } from '@/lib/dashboard/types'
 
 import { MetricCard } from '@/components/dashboard/metric-card'
@@ -36,6 +31,7 @@ import { PipelineDonut } from '@/components/dashboard/pipeline-donut'
 import { ResponseTimeChart } from '@/components/dashboard/response-time-chart'
 import { ActivityFeed } from '@/components/dashboard/activity-feed'
 import { RepPerformance } from '@/components/dashboard/rep-performance'
+import { LossReasonsPanel, ByChannelPanel } from '@/components/dashboard/results-panels'
 
 import { useTranslations } from 'next-intl'
 
@@ -44,8 +40,8 @@ type RangeDays = 7 | 30 | 90
 export default function DashboardPage() {
   const t = useTranslations('Dashboard.page')
   const { defaultCurrency, canManageMembers } = useAuth()
-  const [metrics, setMetrics] = useState<MetricsBundle | null>(null)
-  const [metricsLoading, setMetricsLoading] = useState(true)
+  const [results, setResults] = useState<SalesResults | null>(null)
+  const [resultsLoading, setResultsLoading] = useState(true)
 
   const [range, setRange] = useState<RangeDays>(30)
   // Keep a cache per range so switching tabs doesn't re-fetch what we
@@ -76,10 +72,10 @@ export default function DashboardPage() {
     // Kick everything off in parallel. Each block has its own
     // setState + finally so a slow query doesn't hold up faster
     // sections — each widget shows its own skeleton independently.
-    void loadMetrics(db)
-      .then((m) => setMetrics(m))
-      .catch((err) => console.error('[dashboard] metrics failed:', err))
-      .finally(() => setMetricsLoading(false))
+    void loadSalesResults(db)
+      .then((r) => setResults(r))
+      .catch((err) => console.error('[dashboard] results failed:', err))
+      .finally(() => setResultsLoading(false))
 
     void loadConversationsSeries(db, 30)
       .then((s) => setSeries((prev) => ({ ...prev, 30: s })))
@@ -142,58 +138,39 @@ export default function DashboardPage() {
         </p>
       </div>
 
-      {/* Metric cards */}
+      {/* Zona 1 — Resultados (agora) */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {metricsLoading || !metrics ? (
+        {resultsLoading || !results ? (
           Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)
         ) : (
           <>
             <MetricCard
-              title={t('activeConversations')}
-              value={metrics.activeConversations.current.toLocaleString()}
-              icon={MessageSquare}
-              delta={{
-                sign: metrics.activeConversations.previous,
-                label: deltaLabel(
-                  metrics.activeConversations.previous, 
-                  t('newTodayVsYesterday'), 
-                  t('noChange', { suffix: t('newTodayVsYesterday') })
-                ),
-              }}
-            />
-            <MetricCard
-              title={t('newContactsToday')}
-              value={metrics.newContactsToday.current.toLocaleString()}
-              icon={UserPlus}
-              delta={{
-                sign:
-                  metrics.newContactsToday.current - metrics.newContactsToday.previous,
-                label: deltaLabel(
-                  metrics.newContactsToday.current - metrics.newContactsToday.previous,
-                  t('vsYesterday'),
-                  t('noChange', { suffix: t('vsYesterday') })
-                ),
-              }}
-            />
-            <MetricCard
-              title={t('openDealsValue')}
-              value={formatCurrency(metrics.openDealsValue, defaultCurrency)}
+              title={t('inNegotiation')}
+              value={formatCurrency(results.openValue, defaultCurrency)}
               icon={DollarSign}
-              subtitle={t('openDeals', { count: metrics.openDealsCount })}
+              subtitle={t('openDeals', { count: results.openCount })}
             />
             <MetricCard
-              title={t('messagesSentToday')}
-              value={metrics.messagesSentToday.current.toLocaleString()}
-              icon={Send}
-              delta={{
-                sign:
-                  metrics.messagesSentToday.current - metrics.messagesSentToday.previous,
-                label: deltaLabel(
-                  metrics.messagesSentToday.current - metrics.messagesSentToday.previous,
-                  t('vsYesterday'),
-                  t('noChange', { suffix: t('vsYesterday') })
-                ),
-              }}
+              title={t('wonThisMonth')}
+              value={formatCurrency(results.wonValue, defaultCurrency)}
+              icon={Trophy}
+              subtitle={t('wonCount', { count: results.wonCount })}
+            />
+            <MetricCard
+              title={t('conversion')}
+              value={
+                results.conversion == null
+                  ? '—'
+                  : `${Math.round(results.conversion * 100)}%`
+              }
+              icon={TrendingUp}
+              subtitle={t('conversionHint')}
+            />
+            <MetricCard
+              title={t('avgTicket')}
+              value={formatCurrency(results.ticket, defaultCurrency)}
+              icon={Target}
+              subtitle={t('avgTicketHint')}
             />
           </>
         )}
@@ -227,9 +204,21 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Per-salesperson performance — management view (admins+) */}
+      {/* Zona 2 — O que houve (mês): gestão (admins+) */}
       {canManageMembers && (
-        <RepPerformance rows={repPerf} loading={repPerfLoading} />
+        <>
+          <RepPerformance rows={repPerf} loading={repPerfLoading} />
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <ByChannelPanel
+              items={results?.byChannel ?? null}
+              loading={resultsLoading}
+            />
+            <LossReasonsPanel
+              items={results?.lossReasons ?? null}
+              loading={resultsLoading}
+            />
+          </div>
+        </>
       )}
 
       {/* Response time */}
@@ -239,12 +228,4 @@ export default function DashboardPage() {
       <ActivityFeed items={activity} loading={activityLoading} />
     </div>
   )
-}
-
-// ------------------------------------------------------------
-
-function deltaLabel(delta: number, suffix: string, noChangeLabel: string): string {
-  if (delta === 0) return noChangeLabel
-  const sign = delta > 0 ? '+' : ''
-  return `${sign}${delta.toLocaleString()} ${suffix}`
 }

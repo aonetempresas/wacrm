@@ -16,6 +16,7 @@ import type {
   RepPerformanceRow,
   ResponseTimeBucket,
   ResponseTimeSummary,
+  SalesResults,
 } from './types'
 
 // ------------------------------------------------------------
@@ -398,7 +399,78 @@ export async function loadActivity(db: DB, limit = 20): Promise<ActivityItem[]> 
     .slice(0, limit)
 }
 
-// --- 6. Per-salesperson performance (this month) -----------------------
+// --- 7. Consolidated sales results (director cockpit, this month) ------
+
+export async function loadSalesResults(db: DB): Promise<SalesResults> {
+  const { data } = await db
+    .from('deals')
+    .select('value, status, won_at, lost_at, source_channel, lost_reasons')
+
+  const deals = (data ?? []) as {
+    value: number | null
+    status: string | null
+    won_at: string | null
+    lost_at: string | null
+    source_channel: string | null
+    lost_reasons: string[] | null
+  }[]
+
+  const now = new Date()
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime()
+  const inMonth = (iso: string | null) =>
+    !!iso && new Date(iso).getTime() >= monthStart
+
+  let openValue = 0
+  let openCount = 0
+  let wonValue = 0
+  let wonCount = 0
+  let lostValue = 0
+  let lostCount = 0
+  const lossMap = new Map<string, number>()
+  const chanMap = new Map<string, { count: number; value: number }>()
+
+  for (const d of deals) {
+    const v = Number(d.value ?? 0)
+    if (d.status === 'open') {
+      openValue += v
+      openCount += 1
+    } else if (d.status === 'won' && inMonth(d.won_at)) {
+      wonValue += v
+      wonCount += 1
+      const ch = d.source_channel || '—'
+      const c = chanMap.get(ch) ?? { count: 0, value: 0 }
+      c.count += 1
+      c.value += v
+      chanMap.set(ch, c)
+    } else if (d.status === 'lost' && inMonth(d.lost_at)) {
+      lostValue += v
+      lostCount += 1
+      for (const r of d.lost_reasons ?? []) {
+        lossMap.set(r, (lossMap.get(r) ?? 0) + 1)
+      }
+    }
+  }
+
+  const closed = wonCount + lostCount
+  return {
+    openValue,
+    openCount,
+    wonValue,
+    wonCount,
+    lostValue,
+    lostCount,
+    conversion: closed > 0 ? wonCount / closed : null,
+    ticket: wonCount > 0 ? wonValue / wonCount : 0,
+    lossReasons: [...lossMap.entries()]
+      .map(([reason, count]) => ({ reason, count }))
+      .sort((a, b) => b.count - a.count),
+    byChannel: [...chanMap.entries()]
+      .map(([channel, c]) => ({ channel, count: c.count, value: c.value }))
+      .sort((a, b) => b.value - a.value),
+  }
+}
+
+// --- 8. Per-salesperson performance (this month) -----------------------
 
 export async function loadRepPerformance(db: DB): Promise<RepPerformanceRow[]> {
   // Pull deals + the member roster in parallel, then aggregate per

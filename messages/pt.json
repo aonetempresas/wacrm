@@ -83,7 +83,24 @@
       "newTodayVsYesterday": "novos hoje em relação a ontem",
       "vsYesterday": "em relação a ontem",
       "openDeals": "{count} {count, plural, =1 {negócio aberto} other {negócios abertos}}",
-      "noChange": "Sem alteração {suffix}"
+      "noChange": "Sem alteração {suffix}",
+      "inNegotiation": "Em negociação",
+      "wonThisMonth": "Ganhos no mês",
+      "wonCount": "{count} {count, plural, =1 {venda} other {vendas}}",
+      "conversion": "Conversão",
+      "conversionHint": "ganhos ÷ fechados no mês",
+      "avgTicket": "Ticket médio",
+      "avgTicketHint": "R$ por venda"
+    },
+    "results": {
+      "thisMonth": "Este mês",
+      "lossTitle": "Motivos de perda",
+      "lossEmpty": "Nenhuma perda no mês",
+      "lossEmptyHint": "Aparece quando você marca negócios como Perdido.",
+      "channelTitle": "Vendas por canal",
+      "channelEmpty": "Nenhuma venda no mês",
+      "channelEmptyHint": "Aparece quando você marca negócios como Ganho.",
+      "noChannel": "Sem canal"
     },
     "quickActions": {
       "newContact": "Novo contato",
